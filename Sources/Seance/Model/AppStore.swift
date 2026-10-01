@@ -14,6 +14,8 @@ final class AppStore: ObservableObject {
     @Published var showAllHistory: Set<UUID> = []
     @Published var sidebarVisible = true
     @Published var sidebarWidth: CGFloat = 300
+    /// Height fraction of the bottom shell panel (shared by all sessions).
+    @Published var shellFraction: CGFloat = 0.35
     @Published var terminalBackground = Color(red: 0.16, green: 0.17, blue: 0.20)
 
     /// Set by the AppKit host so the store can move keyboard focus into terminals.
@@ -47,6 +49,7 @@ final class AppStore: ObservableObject {
             selectedTabID = state.selectedTabID ?? tabs.first?.id
             if let w = state.sidebarWidth { sidebarWidth = CGFloat(w) }
             if let v = state.sidebarVisible { sidebarVisible = v }
+            if let f = state.shellFraction { shellFraction = CGFloat(f) }
         }
         if selectedTabID != nil, selectedTab == nil { selectedTabID = tabs.first?.id }
 
@@ -71,7 +74,8 @@ final class AppStore: ObservableObject {
             tabs: tabs.map(\.record),
             selectedTabID: selectedTabID,
             sidebarWidth: Double(sidebarWidth),
-            sidebarVisible: sidebarVisible)
+            sidebarVisible: sidebarVisible,
+            shellFraction: Double(shellFraction))
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: AppPaths.state, options: .atomic)
         }
@@ -173,7 +177,7 @@ final class AppStore: ObservableObject {
             return
         }
         let tab = TabSession(projectID: project.id, sessionID: UUID().uuidString.lowercased(), cwd: project.path)
-        insertAfterSelection(tab)
+        insertAtTopOfProject(tab)
         select(tab)
     }
 
@@ -183,18 +187,15 @@ final class AppStore: ObservableObject {
             return
         }
         let tab = TabSession(projectID: project.id, sessionID: summary.id, cwd: project.path, title: summary.title)
-        insertAfterSelection(tab)
+        insertAtTopOfProject(tab)
         select(tab)
     }
 
-    private func insertAfterSelection(_ tab: TabSession) {
-        if let sel = selectedTab, let i = tabs.firstIndex(where: { $0 === sel }) {
-            // Keep a project's tabs together: insert after the last tab of the same project.
-            if let lastSame = tabs.lastIndex(where: { $0.projectID == tab.projectID }), lastSame >= i {
-                tabs.insert(tab, at: lastSame + 1)
-            } else {
-                tabs.insert(tab, at: i + 1)
-            }
+    /// New and resumed sessions go to the top of their project's cards, matching
+    /// the newest-first order of the history list below them.
+    private func insertAtTopOfProject(_ tab: TabSession) {
+        if let first = tabs.firstIndex(where: { $0.projectID == tab.projectID }) {
+            tabs.insert(tab, at: first)
         } else {
             tabs.append(tab)
         }
@@ -203,9 +204,10 @@ final class AppStore: ObservableObject {
 
     func select(_ tab: TabSession) {
         launchIfNeeded(tab)
+        if tab.shellVisible { launchShellIfNeeded(tab) }
         tab.attention = false
         if selectedTabID != tab.id { selectedTabID = tab.id }
-        terminalContainer?.show(tab.surface)
+        terminalContainer?.show(tab)
         updateDockBadge()
         scheduleSave()
     }
@@ -274,8 +276,9 @@ final class AppStore: ObservableObject {
         let wasSelected = tab.id == selectedTabID
         let ordered = orderedTabs
         let orderedIndex = ordered.firstIndex { $0 === tab } ?? 0
-        if terminalContainer?.current === tab.surface { terminalContainer?.show(nil) }
+        if wasSelected { terminalContainer?.show(nil) }
         tab.surface = nil
+        tab.shellSurface = nil
         tabs.remove(at: index)
         if wasSelected {
             // Prefer the neighbour in the same project, then the next card in the sidebar.
@@ -304,6 +307,18 @@ final class AppStore: ObservableObject {
 
     /// libghostty asks to close a surface (cmd+w, or the shell exited).
     func surfaceRequestedClose(_ surface: TerminalSurfaceView, processAlive: Bool) {
+        if let tab = tabs.first(where: { $0.shellSurface === surface }) {
+            if processAlive {
+                let alert = NSAlert()
+                alert.messageText = "关闭底部终端？"
+                alert.informativeText = "终端里还有程序在运行，关闭会结束它。"
+                alert.addButton(withTitle: "关闭")
+                alert.addButton(withTitle: "取消")
+                guard alert.runModal() == .alertFirstButtonReturn else { return }
+            }
+            closeShell(tab)
+            return
+        }
         guard let tab = tab(for: surface) else { return }
         if processAlive {
             let alert = NSAlert()
@@ -336,6 +351,60 @@ final class AppStore: ObservableObject {
         tab.status = .starting
         tab.hooksActive = false
         refreshInfo(tab)
+    }
+
+    // MARK: - Bottom shell panel
+
+    /// ⌘J: show the selected session's shell panel (starting it in Claude's
+    /// current directory the first time) or hide it again.
+    func toggleShell() {
+        guard let tab = selectedTab else { return }
+        if tab.shellVisible {
+            tab.shellVisible = false
+            tab.shellFocused = false
+        } else {
+            launchShellIfNeeded(tab)
+            tab.shellVisible = true
+            tab.shellFocused = true
+        }
+        terminalContainer?.show(tab)
+        scheduleSave()
+    }
+
+    /// Moves focus between Claude (top) and the shell panel (bottom).
+    func focusPane(shell: Bool?) {
+        guard let tab = selectedTab, tab.shellVisible, tab.shellSurface != nil else { return }
+        let target = shell ?? !tab.shellFocused
+        terminalContainer?.focusPane(shell: target)
+    }
+
+    private func launchShellIfNeeded(_ tab: TabSession) {
+        guard tab.shellSurface == nil, let project = project(tab.projectID) else { return }
+        let fm = FileManager.default
+        let claudeDir = tab.workDir ?? (tab.hooksActive ? tab.cwd : (tab.transcript?.cwd ?? project.path))
+        let candidates = [tab.shellCwd, claudeDir, project.path, NSHomeDirectory()]
+        let dir = candidates.compactMap { $0 }.first { fm.fileExists(atPath: $0) } ?? NSHomeDirectory()
+
+        // A plain login shell (with Ghostty shell integration); deliberately without
+        // SEANCE_TAB_ID so a `claude` started here doesn't report as this card.
+        let shell = TerminalSurfaceView(options: .init(workingDirectory: dir))
+        shell.onPwdChange = { [weak self, weak tab] pwd in
+            guard let tab else { return }
+            let path = pwd.hasPrefix("file://") ? (URL(string: pwd)?.path ?? pwd) : pwd
+            tab.shellCwd = path
+            self?.scheduleSave()
+        }
+        tab.shellSurface = shell
+        tab.shellCwd = dir
+    }
+
+    func closeShell(_ tab: TabSession) {
+        tab.shellVisible = false
+        tab.shellFocused = false
+        tab.shellCwd = nil
+        if tab.id == selectedTabID { terminalContainer?.show(tab) }
+        tab.shellSurface = nil
+        scheduleSave()
     }
 
     // MARK: - Titles & status
@@ -434,10 +503,20 @@ final class AppStore: ObservableObject {
         let hookCwd = tab.hooksActive || !tab.isLaunched ? tab.cwd : nil
 
         infoQueue.async { [weak self] in
+            // The path reported by hooks can be stale: a session that entered a
+            // worktree gets its transcript relocated to that worktree's directory.
             let url = knownPath.map { URL(fileURLWithPath: $0) }
+                .flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
                 ?? Transcript.locate(sessionID: sessionID, projectPath: project.path)
             let info = url.flatMap { Transcript.read($0) }
-            let cwd = hookCwd ?? info?.cwd ?? project.path
+            var cwd = hookCwd ?? info?.cwd ?? project.path
+            // A resumed session that lives in a worktree reports the launch directory
+            // in hooks, but Claude works inside the worktree recorded in the transcript.
+            if case .some(.some(let wt)) = info?.worktree,
+               FileManager.default.fileExists(atPath: wt.path),
+               !cwd.hasPrefix(wt.path) {
+                cwd = wt.path
+            }
             let git = GitProbe.probe(cwd) ?? (cwd != project.path ? GitProbe.probe(project.path) : nil)
             let pr = git.flatMap { GitProbe.pullRequest(toplevel: $0.toplevel, branch: $0.branch) }
 
@@ -446,6 +525,7 @@ final class AppStore: ObservableObject {
                 self.refreshing.remove(tab.id)
                 guard self.tabs.contains(where: { $0 === tab }) else { return }
                 if let url { tab.transcriptPath = url.path }
+                tab.workDir = cwd
                 tab.transcript = info
                 self.updateTitle(tab)
 

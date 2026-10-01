@@ -137,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
 
         let view = NSMenu(title: "显示")
         view.addItem(item("显示/隐藏侧栏", #selector(toggleSidebar), "s", [.command, .control]))
+        view.addItem(item("显示/隐藏终端", #selector(toggleShell), "j"))
+        view.addItem(item("聚焦 Claude", #selector(focusClaudePane), String(UnicodeScalar(NSUpArrowFunctionKey)!), [.command, .option]))
+        view.addItem(item("聚焦终端", #selector(focusShellPane), String(UnicodeScalar(NSDownArrowFunctionKey)!), [.command, .option]))
         view.addItem(.separator())
         view.addItem(item("放大字体", #selector(fontBigger), "="))
         view.addItem(item("缩小字体", #selector(fontSmaller), "-"))
@@ -194,6 +197,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         withAnimation(.easeOut(duration: 0.15)) { store.sidebarVisible.toggle() }
         store.scheduleSave()
     }
+    @objc private func toggleShell() { store.toggleShell() }
+    @objc private func focusClaudePane() { store.focusPane(shell: false) }
+    @objc private func focusShellPane() { store.focusPane(shell: true) }
     @objc private func fontBigger() { store.selectedTab?.surface?.perform(action: "increase_font_size:1") }
     @objc private func fontSmaller() { store.selectedTab?.surface?.perform(action: "decrease_font_size:1") }
     @objc private func fontReset() { store.selectedTab?.surface?.perform(action: "reset_font_size") }
@@ -213,6 +219,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
     }
 
     func ghosttyGotoTab(_ target: GhosttyGotoTab) { store.gotoTab(target) }
+
+    func ghosttyGotoSplit(_ direction: ghostty_action_goto_split_e) {
+        switch direction {
+        case GHOSTTY_GOTO_SPLIT_UP: store.focusPane(shell: false)
+        case GHOSTTY_GOTO_SPLIT_DOWN: store.focusPane(shell: true)
+        case GHOSTTY_GOTO_SPLIT_PREVIOUS, GHOSTTY_GOTO_SPLIT_NEXT: store.focusPane(shell: nil)
+        default: break
+        }
+    }
 
     func ghosttySurfaceRequestedClose(_ surface: TerminalSurfaceView, processAlive: Bool) {
         store.surfaceRequestedClose(surface, processAlive: processAlive)

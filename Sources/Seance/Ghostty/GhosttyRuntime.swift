@@ -6,6 +6,7 @@ protocol GhosttyRuntimeDelegate: AnyObject {
     func ghosttyNewTab(from surface: TerminalSurfaceView?)
     func ghosttyCloseTab(_ surface: TerminalSurfaceView)
     func ghosttyGotoTab(_ target: GhosttyGotoTab)
+    func ghosttyGotoSplit(_ direction: ghostty_action_goto_split_e)
     func ghosttySurfaceRequestedClose(_ surface: TerminalSurfaceView, processAlive: Bool)
     func ghosttyDesktopNotification(_ surface: TerminalSurfaceView?, title: String, body: String)
     func ghosttyBell(_ surface: TerminalSurfaceView)
@@ -254,6 +255,10 @@ final class GhosttyRuntime {
             case GHOSTTY_GOTO_TAB_LAST.rawValue: delegate?.ghosttyGotoTab(.last)
             default: delegate?.ghosttyGotoTab(.index(Int(raw)))
             }
+
+        case GHOSTTY_ACTION_GOTO_SPLIT:
+            let direction = action.action.goto_split
+            DispatchQueue.main.async { delegate?.ghosttyGotoSplit(direction) }
 
         case GHOSTTY_ACTION_SET_TITLE:
             guard let view, let ptr = action.action.set_title.title else { return false }

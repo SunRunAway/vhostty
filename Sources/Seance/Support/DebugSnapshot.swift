@@ -21,15 +21,31 @@ final class DebugSnapshot {
     /// Commands from <dir>/input.txt (consumed on read), one per line. Input only
     /// ever goes to a tab named explicitly with `to <tab uuid>`, never to "whatever
     /// is selected", so a test can't type into a real session by accident.
-    ///   to <uuid> · text <s> · enter · down · up · esc · select <uuid> · new · notify
+    ///   to <uuid> / toshell <uuid> · text <s> · enter · down · up · esc ·
+    ///   select <uuid> · new · notify · toggleshell · focus claude|shell
     private func drive() {
         let url = directory.appendingPathComponent("input.txt")
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
         try? FileManager.default.removeItem(at: url)
         var target: TabSession?
+        var targetShell = false
         for line in content.split(separator: "\n").map(String.init) {
             if line.hasPrefix("to ") {
                 target = UUID(uuidString: String(line.dropFirst(3))).flatMap { store.tab(withID: $0) }
+                targetShell = false
+                continue
+            }
+            if line.hasPrefix("toshell ") {
+                target = UUID(uuidString: String(line.dropFirst(8))).flatMap { store.tab(withID: $0) }
+                targetShell = true
+                continue
+            }
+            if line == "toggleshell" {
+                store.toggleShell()
+                continue
+            }
+            if line.hasPrefix("focus ") {
+                store.focusPane(shell: line.hasSuffix("shell"))
                 continue
             }
             if line.hasPrefix("select "), let id = UUID(uuidString: String(line.dropFirst(7))), let tab = store.tab(withID: id) {
@@ -40,7 +56,7 @@ final class DebugSnapshot {
                 store.newSession()
                 continue
             }
-            guard let tab = target, let surface = tab.surface else { continue }
+            guard let tab = target, let surface = targetShell ? tab.shellSurface : tab.surface else { continue }
             switch line {
             case "enter": surface.debugPress(keyCode: 0x24, chars: "\r")
             case "down": surface.debugPress(keyCode: 0x7D, chars: "\u{F701}")
@@ -81,6 +97,12 @@ final class DebugSnapshot {
             lines.append("    title=\(tab.title) | terminalTitle=\(tab.terminalTitle ?? "-")")
             lines.append("    session=\(tab.sessionID) cwd=\(tab.cwd)")
             lines.append("    branch=\(tab.branch ?? "-") worktree=\(tab.worktree ?? "-") pr=\(tab.prNumber.map(String.init) ?? "-") \(tab.prState ?? "")")
+            if let sh = tab.shellSurface {
+                lines.append("    shell: visible=\(tab.shellVisible) focused=\(tab.shellFocused) cwd=\(tab.shellCwd ?? "-") frame=\(sh.frame) inWindow=\(sh.window != nil)")
+                lines.append(sh.visibleText().split(separator: "\n", omittingEmptySubsequences: false)
+                    .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                    .map { "    s| " + $0 }.joined(separator: "\n"))
+            }
             if let s = tab.surface {
                 lines.append("    frame=\(s.frame) inWindow=\(s.window != nil)")
                 lines.append(s.visibleText().split(separator: "\n", omittingEmptySubsequences: false)

@@ -35,7 +35,7 @@ enum SessionStatus: String, Codable {
     case exited
 }
 
-/// One horizontal tab = one terminal running one Claude Code session.
+/// One session card = one terminal running Claude Code (+ an optional bottom shell).
 final class TabSession: ObservableObject, Identifiable {
     let id: UUID
     let projectID: UUID
@@ -49,13 +49,24 @@ final class TabSession: ObservableObject, Identifiable {
     @Published var prState: String?
     @Published var status: SessionStatus
     @Published var attention = false
+    /// Whether the bottom shell panel is shown for this session.
+    @Published var shellVisible = false
 
     var cwd: String
+    /// Where Claude is effectively working (hook cwd, corrected for worktrees).
+    var workDir: String?
     var transcriptPath: String?
     var terminalTitle: String?
     var transcript: TranscriptInfo?
     var hooksActive = false
     var surface: TerminalSurfaceView?
+
+    /// The bottom shell panel's terminal (created on first ⌘J).
+    var shellSurface: TerminalSurfaceView?
+    /// Last known working directory of the bottom shell.
+    var shellCwd: String?
+    /// Which pane had keyboard focus last, restored when switching back.
+    var shellFocused = false
 
     var isLaunched: Bool { surface != nil }
 
@@ -71,7 +82,8 @@ final class TabSession: ObservableObject, Identifiable {
 
     var record: TabRecord {
         TabRecord(id: id, projectID: projectID, sessionID: sessionID, title: title, cwd: cwd,
-                  branch: branch, worktree: worktree, prNumber: prNumber, prURL: prURL, prState: prState)
+                  branch: branch, worktree: worktree, prNumber: prNumber, prURL: prURL, prState: prState,
+                  shellOpen: shellVisible, shellCwd: shellCwd)
     }
 
     convenience init(record r: TabRecord) {
@@ -81,6 +93,8 @@ final class TabSession: ObservableObject, Identifiable {
         prNumber = r.prNumber
         prURL = r.prURL
         prState = r.prState
+        shellVisible = r.shellOpen ?? false
+        shellCwd = r.shellCwd
     }
 }
 
@@ -95,6 +109,8 @@ struct TabRecord: Codable {
     var prNumber: Int?
     var prURL: String?
     var prState: String?
+    var shellOpen: Bool?
+    var shellCwd: String?
 }
 
 struct PersistedState: Codable {
@@ -103,4 +119,5 @@ struct PersistedState: Codable {
     var selectedTabID: UUID?
     var sidebarWidth: Double?
     var sidebarVisible: Bool?
+    var shellFraction: Double?
 }
