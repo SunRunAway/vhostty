@@ -9,6 +9,8 @@ import Foundation
 // The tab comes from `--tab <uuid> --sock <path>` (baked into the per-tab
 // settings file, so it survives Claude Code moving the session to its background
 // daemon, whose worker doesn't inherit the tab's environment), else from the env.
+// Without either (a worker started from the shared settings file) the event is
+// still sent with an empty tab line; the app then finds the tab by session id.
 func argument(_ name: String) -> String? {
     let args = CommandLine.arguments
     guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
@@ -16,8 +18,17 @@ func argument(_ name: String) -> String? {
 }
 
 let env = ProcessInfo.processInfo.environment
-guard let tab = argument("--tab") ?? env["VHOSTTY_TAB_ID"],
-      let sockPath = argument("--sock") ?? env["VHOSTTY_SOCK"] else { exit(0) }
+
+/// Same location as the app's AppPaths.hookSocket.
+func defaultSocketPath() -> String {
+    let support = env["VHOSTTY_SUPPORT_DIR"]
+        ?? (NSHomeDirectory() as NSString).appendingPathComponent("Library/Application Support/Vhostty")
+    let p = (support as NSString).appendingPathComponent("hook.sock")
+    return p.utf8.count < 100 ? p : "/tmp/vhostty-\(getuid()).sock"
+}
+
+let tab = argument("--tab") ?? env["VHOSTTY_TAB_ID"] ?? ""
+let sockPath = argument("--sock") ?? env["VHOSTTY_SOCK"] ?? defaultSocketPath()
 
 var payload = Data((tab + "\n").utf8)
 payload.append(FileHandle.standardInput.readDataToEndOfFile())

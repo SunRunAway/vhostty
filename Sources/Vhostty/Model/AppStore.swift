@@ -455,7 +455,11 @@ final class AppStore: ObservableObject {
     }
 
     func handleHook(_ event: HookEvent) {
-        guard let tab = tab(withID: event.tabID) else { return }
+        // The session id decides first: a background worker may carry no tab, or
+        // the tab it was started from, while another card has since attached to it.
+        // A new id (the session just moved to a worker) falls back to the tab.
+        let bySession = event.sessionID.flatMap { sid in tabs.first { $0.sessionID == sid } }
+        guard let tab = bySession ?? event.tabID.flatMap(tab(withID:)) else { return }
         tab.hooksActive = true
         // SessionEnd can come from the tab's own Claude after its session moved
         // to a background worker (←); it must not take the tab back to the old id.

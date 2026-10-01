@@ -2,7 +2,8 @@ import Foundation
 
 /// A Claude Code hook event forwarded by `vhostty-hook`.
 struct HookEvent {
-    let tabID: UUID
+    /// Nil when the hook ran without knowing its tab (see vhostty-hook).
+    let tabID: UUID?
     let name: String
     let sessionID: String?
     let cwd: String?
@@ -14,7 +15,7 @@ struct HookEvent {
 
 /// Listens on a Unix socket for hook events sent by the `vhostty-hook` helper.
 ///
-/// Wire format: "<tab uuid>\n<hook JSON from Claude Code's stdin>", then EOF.
+/// Wire format: "<tab uuid or empty>\n<hook JSON from Claude Code's stdin>", then EOF.
 final class HookServer {
     let socketPath: String
     private let onEvent: (HookEvent) -> Void
@@ -76,12 +77,11 @@ final class HookServer {
         }
 
         guard let nl = data.firstIndex(of: UInt8(ascii: "\n")),
-              let tabID = UUID(uuidString: String(decoding: data[..<nl], as: UTF8.self).trimmingCharacters(in: .whitespaces)),
               let obj = (try? JSONSerialization.jsonObject(with: data[(nl + 1)...])) as? [String: Any],
               let name = obj["hook_event_name"] as? String else { return }
 
         let event = HookEvent(
-            tabID: tabID,
+            tabID: UUID(uuidString: String(decoding: data[..<nl], as: UTF8.self).trimmingCharacters(in: .whitespaces)),
             name: name,
             sessionID: obj["session_id"] as? String,
             cwd: obj["cwd"] as? String,
