@@ -16,8 +16,6 @@ final class TerminalContainerView: NSView {
     var onShellFractionChanged: ((CGFloat) -> Void)?
 
     private let divider = PaneDivider()
-    private let topDim = DimView()
-    private let bottomDim = DimView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -76,7 +74,6 @@ final class TerminalContainerView: NSView {
             let wantShell = self.tab?.shellFocused == true && self.currentShell != nil
             guard let target = wantShell ? self.currentShell : self.current else { return }
             if window.firstResponder !== target { window.makeFirstResponder(target) }
-            self.updateDimming()
         }
     }
 
@@ -84,13 +81,6 @@ final class TerminalContainerView: NSView {
     func focusPane(shell: Bool) {
         tab?.shellFocused = shell && currentShell != nil
         focusCurrent()
-    }
-
-    func updateDimming() {
-        let split = currentShell != nil
-        let shellHasFocus = split && window?.firstResponder === currentShell
-        topDim.isHidden = !split || !shellHasFocus
-        bottomDim.isHidden = !split || shellHasFocus
     }
 
     override func layout() {
@@ -108,8 +98,6 @@ final class TerminalContainerView: NSView {
         }
         guard let bottom = currentShell else {
             top.frame = b
-            topDim.removeFromSuperview()
-            bottomDim.removeFromSuperview()
             return
         }
         let dh = Self.dividerHeight
@@ -118,12 +106,6 @@ final class TerminalContainerView: NSView {
         top.frame = NSRect(x: 0, y: 0, width: b.width, height: topH)
         divider.frame = NSRect(x: 0, y: topH, width: b.width, height: dh)
         bottom.frame = NSRect(x: 0, y: topH + dh, width: b.width, height: b.height - topH - dh)
-
-        for (dim, pane) in [(topDim, top), (bottomDim, bottom)] {
-            if dim.superview == nil { addSubview(dim) }
-            dim.frame = pane.frame
-        }
-        updateDimming()
     }
 
     private func dragDivider(to y: CGFloat) {
@@ -146,14 +128,13 @@ final class TerminalContainerView: NSView {
     }
 
     @objc private func responderMayHaveChanged() {
-        // Track clicks between panes so the dimming and the remembered pane follow.
+        // Track clicks between panes so the remembered pane follows.
         guard let window, currentShell != nil else { return }
         if window.firstResponder === currentShell, tab?.shellFocused == false {
             tab?.shellFocused = true
         } else if window.firstResponder === current, tab?.shellFocused == true {
             tab?.shellFocused = false
         }
-        updateDimming()
     }
 }
 
@@ -184,20 +165,6 @@ private final class PaneDivider: NSView {
     override func mouseUp(with event: NSEvent) {
         onDragEnd?()
     }
-}
-
-/// Darkens the unfocused pane; transparent to the mouse.
-private final class DimView: NSView {
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.28).cgColor
-        isHidden = true
-    }
-
-    required init?(coder: NSCoder) { fatalError("not supported") }
-
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 struct TerminalHost: NSViewRepresentable {
