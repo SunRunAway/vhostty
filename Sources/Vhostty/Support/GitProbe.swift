@@ -54,7 +54,16 @@ enum GitProbe {
 
     static func pullRequest(toplevel: String, branch: String) -> PRInfo? {
         if ["main", "master", "HEAD"].contains(branch) || branch.hasPrefix("detached@") { return nil }
-        let key = "\(toplevel)|\(branch)"
+        return view(branch, cwd: toplevel, key: "\(toplevel)|\(branch)")
+    }
+
+    /// A PR Claude linked in the transcript (pr-link), looked up by URL or number so
+    /// its state stays current after the session has left the PR's branch.
+    static func pullRequest(ref: String, cwd: String) -> PRInfo? {
+        view(ref, cwd: cwd, key: ref.contains("://") ? ref : "\(cwd)|#\(ref)")
+    }
+
+    private static func view(_ ref: String, cwd: String, key: String) -> PRInfo? {
         prLock.lock()
         if let (cached, at) = prCache[key], Date().timeIntervalSince(at) < prTTL {
             prLock.unlock()
@@ -64,7 +73,7 @@ enum GitProbe {
 
         var info: PRInfo?
         if let gh = ShellEnvironment.which("gh"),
-           let r = Proc.run(gh, ["pr", "view", branch, "--json", "number,url,state"], cwd: toplevel, timeout: 15),
+           let r = Proc.run(gh, ["pr", "view", ref, "--json", "number,url,state"], cwd: cwd, timeout: 15),
            r.status == 0,
            let obj = (try? JSONSerialization.jsonObject(with: Data(r.stdout.utf8))) as? [String: Any],
            let number = obj["number"] as? Int {
