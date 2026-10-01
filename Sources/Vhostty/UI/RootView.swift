@@ -93,15 +93,15 @@ struct EmptyStateView: View {
             Text("Vhostty")
                 .font(.system(size: 26, weight: .semibold, design: .rounded))
             Text(store.projects.isEmpty
-                 ? "添加一个项目目录，然后在里面召唤 Claude。"
-                 : "选择一个项目，开始新的 Claude 会话。")
+                 ? "Add a project directory, then summon Claude in it."
+                 : "Choose a project to start a new Claude session." as LocalizedStringKey)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 8) {
                 if store.projects.isEmpty {
                     Button { store.addProjectViaPanel() } label: {
-                        Label("添加项目…", systemImage: "folder.badge.plus").frame(minWidth: 180)
+                        Label("Add Project…", systemImage: "folder.badge.plus").frame(minWidth: 180)
                     }
                     .keyboardShortcut(.defaultAction)
                 } else {
@@ -109,12 +109,12 @@ struct EmptyStateView: View {
                         Button { store.newSession(in: p) } label: {
                             HStack {
                                 Circle().fill(p.color).frame(width: 7, height: 7)
-                                Text("在 \(p.name) 中新建会话")
+                                Text("New session in \(p.name)")
                             }
                             .frame(minWidth: 220)
                         }
                     }
-                    Button("添加项目…") { store.addProjectViaPanel() }
+                    Button("Add Project…") { store.addProjectViaPanel() }
                         .buttonStyle(.link)
                         .padding(.top, 4)
                 }
@@ -122,10 +122,10 @@ struct EmptyStateView: View {
             .controlSize(.large)
 
             VStack(alignment: .leading, spacing: 4) {
-                shortcut("⌘T", "在当前项目新建会话")
-                shortcut("⌘1…9", "切换会话")
-                shortcut("⌘W", "关闭会话")
-                shortcut("⌃⌘S", "显示/隐藏侧栏")
+                shortcut("⌘T", "New session in the current project")
+                shortcut("⌘1…9", "Switch sessions")
+                shortcut("⌘W", "Close session")
+                shortcut("⌃⌘S", "Show/hide sidebar")
             }
             .font(.system(size: 12))
             .foregroundStyle(.tertiary)
@@ -134,7 +134,7 @@ struct EmptyStateView: View {
         .padding(40)
     }
 
-    private func shortcut(_ key: String, _ text: String) -> some View {
+    private func shortcut(_ key: String, _ text: LocalizedStringKey) -> some View {
         HStack(spacing: 10) {
             Text(key).font(.system(size: 12, design: .monospaced)).frame(width: 56, alignment: .trailing)
             Text(text)

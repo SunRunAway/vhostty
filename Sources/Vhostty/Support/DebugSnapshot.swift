@@ -113,7 +113,7 @@ final class DebugSnapshot {
             case "up": surface.debugPress(keyCode: 0x7E, chars: "\u{F700}")
             case "esc": surface.debugPress(keyCode: 0x35, chars: "\u{1b}")
             case "notify":
-                store.notify(tab, body: "Vhostty 测试通知")
+                store.notify(tab, body: "Vhostty test notification")
                 UNUserNotificationCenter.current().getNotificationSettings { settings in
                     let text = "authorization=\(settings.authorizationStatus.rawValue)"
                     try? text.write(to: self.directory.appendingPathComponent("notify.txt"), atomically: true, encoding: .utf8)

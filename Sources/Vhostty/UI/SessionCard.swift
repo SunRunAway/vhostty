@@ -25,8 +25,8 @@ struct SessionCard: View {
             }
             .frame(height: 18)
 
-            infoLine("arrow.triangle.branch", tab.branch, placeholder: "无分支信息")
-            infoLine("square.stack.3d.up", tab.worktree, placeholder: tab.branch == nil ? "—" : "主工作区",
+            infoLine("arrow.triangle.branch", tab.branch, placeholder: String(localized: "No branch info"))
+            infoLine("square.stack.3d.up", tab.worktree, placeholder: tab.branch == nil ? "—" : String(localized: "Main worktree"),
                      tint: tab.worktree == nil ? .secondary : Color(red: 0.72, green: 0.55, blue: 1.0))
             prLine
         }
@@ -63,7 +63,7 @@ struct SessionCard: View {
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
         .opacity(hover ? 1 : 0)
-        .help("关闭 (⌘W)")
+        .help("Close (⌘W)")
     }
 
     private func infoLine(_ icon: String, _ text: String?, placeholder: String, tint: Color = .secondary) -> some View {
@@ -92,7 +92,7 @@ struct SessionCard: View {
                     .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
                     .foregroundStyle(prColor)
                 if let state = tab.prState, state != "OPEN" {
-                    Text(state == "MERGED" ? "已合并" : "已关闭")
+                    Text(state == "MERGED" ? String(localized: "Merged") : String(localized: "Closed"))
                         .font(.system(size: 10.5))
                         .foregroundStyle(.tertiary)
                 }
@@ -102,7 +102,7 @@ struct SessionCard: View {
                         .foregroundStyle(.tertiary)
                 }
             } else {
-                Text("无 PR")
+                Text("No PR")
                     .font(.system(size: 11.5))
                     .foregroundStyle(.tertiary)
             }
@@ -112,7 +112,7 @@ struct SessionCard: View {
         .onTapGesture {
             if let s = tab.prURL, let url = URL(string: s) { NSWorkspace.shared.open(url) } else { store.select(tab) }
         }
-        .help(tab.prURL.map { "在浏览器中打开 \($0)" } ?? "")
+        .help(tab.prURL.map { String(localized: "Open \($0) in Browser") } ?? "")
     }
 
     private var prColor: Color {
@@ -125,20 +125,20 @@ struct SessionCard: View {
 
     @ViewBuilder
     private var contextMenu: some View {
-        Button("关闭") { store.requestClose(tab) }
-        Button("关闭其他会话") { store.closeOtherTabs(tab) }
+        Button("Close") { store.requestClose(tab) }
+        Button("Close Other Sessions") { store.closeOtherTabs(tab) }
         Divider()
         if let s = tab.prURL, let url = URL(string: s) {
-            Button("在浏览器中打开 PR #\(tab.prNumber ?? 0)") { NSWorkspace.shared.open(url) }
+            Button("Open PR #\(tab.prNumber ?? 0) in Browser") { NSWorkspace.shared.open(url) }
         }
-        Button("在 Finder 中显示目录") {
+        Button("Show Directory in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: tab.cwd)])
         }
-        Button("拷贝会话 ID") {
+        Button("Copy Session ID") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(tab.sessionID, forType: .string)
         }
-        Button("拷贝恢复命令") {
+        Button("Copy Resume Command") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString("claude --resume \(tab.sessionID)", forType: .string)
         }
@@ -174,12 +174,12 @@ struct StatusIndicator: View {
 
     private var statusHelp: String {
         switch status {
-        case .working: return "Claude 正在工作"
-        case .needsInput: return "Claude 需要你确认"
-        case .idle: return attention ? "Claude 已完成（未查看）" : "等待输入"
-        case .starting: return "启动中"
-        case .dormant: return "未启动（点击后恢复会话）"
-        case .exited: return "Claude 已退出"
+        case .working: return String(localized: "Claude is working")
+        case .needsInput: return String(localized: "Claude needs your input")
+        case .idle: return attention ? String(localized: "Claude is done (unread)") : String(localized: "Waiting for input")
+        case .starting: return String(localized: "Starting")
+        case .dormant: return String(localized: "Not started (click to resume)")
+        case .exited: return String(localized: "Claude exited")
         }
     }
 }

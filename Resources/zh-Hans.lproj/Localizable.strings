@@ -1,0 +1,114 @@
+/* Simplified Chinese. Keys are the English source strings. */
+
+/* Menus */
+"About Vhostty" = "关于 Vhostty";
+"Open Ghostty Config" = "打开 Ghostty 配置文件";
+"Reload Config" = "重新加载配置";
+"Hide Vhostty" = "隐藏 Vhostty";
+"Hide Others" = "隐藏其他";
+"Show All" = "全部显示";
+"Quit Vhostty" = "退出 Vhostty";
+"File" = "文件";
+"New Claude Session" = "新建 Claude 会话";
+"Add Project…" = "添加项目…";
+"Close Session" = "关闭会话";
+"Edit" = "编辑";
+"Undo" = "撤销";
+"Redo" = "重做";
+"Cut" = "剪切";
+"Copy" = "拷贝";
+"Paste" = "粘贴";
+"Select All" = "全选";
+"Clear Screen" = "清屏";
+"View" = "显示";
+"Show/Hide Sidebar" = "显示/隐藏侧栏";
+"Show/Hide Terminal" = "显示/隐藏终端";
+"Focus Claude" = "聚焦 Claude";
+"Focus Terminal" = "聚焦终端";
+"Increase Font Size" = "放大字体";
+"Decrease Font Size" = "缩小字体";
+"Actual Size" = "实际大小";
+"Enter Full Screen" = "进入全屏";
+"Window" = "窗口";
+"Minimize" = "最小化";
+"Zoom" = "缩放";
+"Next Session" = "下一个会话";
+"Previous Session" = "上一个会话";
+"Session %lld" = "会话 %lld";
+"Main Window" = "主窗口";
+
+/* Alerts and panels */
+"Failed to start the terminal engine" = "终端引擎初始化失败";
+"Quit Vhostty?" = "退出 Vhostty？";
+"%lld terminals are still running and will be ended. Your sessions are saved and can be resumed next time." = "有 %lld 个终端仍在运行，退出会结束它们。会话会被保存，下次打开时可以恢复。";
+"Quit" = "退出";
+"Cancel" = "取消";
+"OK" = "确定";
+"Allow" = "允许";
+"Remove" = "移除";
+"Close" = "关闭";
+"Choose" = "选择";
+"Allow a terminal program to read the clipboard?" = "允许终端程序读取剪贴板？";
+"A program in the terminal is asking to read your clipboard contents." = "终端里的程序请求读取你的剪贴板内容。";
+"Paste potentially unsafe content?" = "粘贴可能不安全的内容？";
+"Allow a terminal program to write to the clipboard?" = "允许终端程序写入剪贴板？";
+"Add Project" = "添加项目";
+"Choose a project directory. Claude sessions will start there." = "选择一个项目目录，Claude 会话将在这里启动";
+"Rename Project" = "重命名项目";
+"Remove project “%@”?" = "移除项目「%@」？";
+"It is only removed from Vhostty. No files are deleted." = "只会从 Vhostty 中移除，不会删除任何文件。";
+"Its %lld open sessions will be closed (their history is kept and can be resumed later). No files are deleted." = "它的 %lld 个会话会被关闭（会话记录仍保留，可以之后恢复）。不会删除任何文件。";
+"Close %lld other running sessions?" = "关闭其他 %lld 个正在运行的会话？";
+"Their history is kept and can be resumed from the sidebar later." = "会话记录会保留，之后可以从侧栏恢复。";
+"Close the bottom terminal?" = "关闭底部终端？";
+"A program is still running in the terminal. Closing will end it." = "终端里还有程序在运行，关闭会结束它。";
+"Close “%@”?" = "关闭「%@」？";
+"Claude is still running. Closing will end it. The history is kept and can be resumed from the sidebar later." = "Claude 仍在运行，关闭会结束它。会话记录会保留，可以之后从侧栏恢复。";
+
+/* Sidebar */
+"Add Project (⇧⌘O)" = "添加项目 (⇧⌘O)";
+"Add Your First Project…" = "添加第一个项目…";
+"Past Sessions" = "历史会话";
+"Show Less" = "收起";
+"Show More" = "显示更多";
+"New Session" = "新建会话";
+"Show in Finder" = "在 Finder 中显示";
+"Copy Path" = "拷贝路径";
+"Rename…" = "重命名…";
+"Change Directory…" = "更改目录…";
+"Remove Project…" = "移除项目…";
+"Resume session: %@" = "恢复会话：%@";
+"now" = "刚刚";
+"%lldm" = "%lld分钟";
+"%lldh" = "%lld小时";
+"%lldd" = "%lld天";
+
+/* Session card */
+"No branch info" = "无分支信息";
+"Main worktree" = "主工作区";
+"No PR" = "无 PR";
+"Merged" = "已合并";
+"Closed" = "已关闭";
+"Open %@ in Browser" = "在浏览器中打开 %@";
+"Close (⌘W)" = "关闭 (⌘W)";
+"Close Other Sessions" = "关闭其他会话";
+"Open PR #%lld in Browser" = "在浏览器中打开 PR #%lld";
+"Show Directory in Finder" = "在 Finder 中显示目录";
+"Copy Session ID" = "拷贝会话 ID";
+"Copy Resume Command" = "拷贝恢复命令";
+"Claude is working" = "Claude 正在工作";
+"Claude needs your input" = "Claude 需要你确认";
+"Claude is done (unread)" = "Claude 已完成（未查看）";
+"Waiting for input" = "等待输入";
+"Starting" = "启动中";
+"Not started (click to resume)" = "未启动（点击后恢复会话）";
+"Claude exited" = "Claude 已退出";
+
+/* Empty state */
+"Add a project directory, then summon Claude in it." = "添加一个项目目录，然后在里面召唤 Claude。";
+"Choose a project to start a new Claude session." = "选择一个项目，开始新的 Claude 会话。";
+"New session in %@" = "在 %@ 中新建会话";
+"New session in the current project" = "在当前项目新建会话";
+"Switch sessions" = "切换会话";
+"Close session" = "关闭会话";
+"Show/hide sidebar" = "显示/隐藏侧栏";

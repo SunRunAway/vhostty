@@ -13,7 +13,7 @@ struct SidebarView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                IconButton(systemName: "plus", help: "添加项目 (⇧⌘O)") { store.addProjectViaPanel() }
+                IconButton(systemName: "plus", help: "Add Project (⇧⌘O)") { store.addProjectViaPanel() }
             }
             .padding(.leading, 16)
             .padding(.trailing, 10)
@@ -26,7 +26,7 @@ struct SidebarView: View {
                     }
                     if store.projects.isEmpty {
                         Button { store.addProjectViaPanel() } label: {
-                            Label("添加第一个项目…", systemImage: "folder.badge.plus")
+                            Label("Add Your First Project…", systemImage: "folder.badge.plus")
                                 .font(.system(size: 13))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
@@ -69,7 +69,7 @@ private struct ProjectSection: View {
                 if !closed.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
                         if !open.isEmpty {
-                            Text("历史会话")
+                            Text("Past Sessions")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.tertiary)
                                 .padding(.leading, 16)
@@ -83,7 +83,7 @@ private struct ProjectSection: View {
                             Button {
                                 if showAll { store.showAllHistory.remove(project.id) } else { store.showAllHistory.insert(project.id) }
                             } label: {
-                                Text(showAll ? "收起" : "显示更多")
+                                Text(showAll ? "Show Less" : "Show More" as LocalizedStringKey)
                                     .font(.system(size: 12.5))
                                     .foregroundStyle(.tertiary)
                                     .padding(.leading, 16)
@@ -97,7 +97,7 @@ private struct ProjectSection: View {
                 }
                 if open.isEmpty && closed.isEmpty {
                     Button { store.newSession(in: project) } label: {
-                        Label("新建会话", systemImage: "plus")
+                        Label("New Session", systemImage: "plus")
                             .font(.system(size: 12.5))
                             .foregroundStyle(.tertiary)
                             .padding(.leading, 16)
@@ -140,7 +140,7 @@ private struct ProjectRow: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .foregroundStyle(.secondary)
-                IconButton(systemName: "square.and.pencil", help: "新建 Claude 会话") {
+                IconButton(systemName: "square.and.pencil", help: "New Claude Session") {
                     store.newSession(in: project)
                 }
             }
@@ -158,20 +158,20 @@ private struct ProjectRow: View {
 
     @ViewBuilder
     private var projectMenu: some View {
-        Button("新建 Claude 会话") { store.newSession(in: project) }
+        Button("New Claude Session") { store.newSession(in: project) }
         Divider()
-        Button("在 Finder 中显示") {
+        Button("Show in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: project.path)])
         }
-        Button("拷贝路径") {
+        Button("Copy Path") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(project.path, forType: .string)
         }
         Divider()
-        Button("重命名…") { store.renameProject(project) }
-        Button("更改目录…") { store.changeProjectDirectory(project) }
+        Button("Rename…") { store.renameProject(project) }
+        Button("Change Directory…") { store.changeProjectDirectory(project) }
         Divider()
-        Button("移除项目…") { store.removeProject(project) }
+        Button("Remove Project…") { store.removeProject(project) }
     }
 }
 
@@ -204,13 +204,13 @@ private struct HistoryRow: View {
         .contentShape(Rectangle())
         .onHover { hover = $0 }
         .onTapGesture { store.resumeSession(summary, in: project) }
-        .help("恢复会话：\(summary.title)")
+        .help("Resume session: \(summary.title)")
     }
 }
 
 struct IconButton: View {
     let systemName: String
-    let help: String
+    let help: LocalizedStringKey
     let action: () -> Void
     @State private var hover = false
 
@@ -233,10 +233,10 @@ enum RelativeTime {
     static func short(_ date: Date) -> String {
         let s = Date().timeIntervalSince(date)
         switch s {
-        case ..<60: return "刚刚"
-        case ..<3600: return "\(Int(s / 60))分钟"
-        case ..<86400: return "\(Int(s / 3600))小时"
-        case ..<(86400 * 30): return "\(Int(s / 86400))天"
+        case ..<60: return String(localized: "now")
+        case ..<3600: return String(localized: "\(Int(s / 60))m")
+        case ..<86400: return String(localized: "\(Int(s / 3600))h")
+        case ..<(86400 * 30): return String(localized: "\(Int(s / 86400))d")
         default:
             let f = DateFormatter()
             f.dateFormat = "M/d"

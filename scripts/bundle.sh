@@ -22,6 +22,7 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp "$BIN/Vhostty" "$APP/Contents/MacOS/Vhostty"
 cp "$BIN/vhostty-hook" "$APP/Contents/MacOS/vhostty-hook"
 cp Resources/ghostty-defaults.conf "$APP/Contents/Resources/"
+cp -R Resources/*.lproj "$APP/Contents/Resources/"
 cp Resources/bin/* "$APP/Contents/Resources/bin/"
 chmod +x "$APP/Contents/Resources/bin/"*
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"

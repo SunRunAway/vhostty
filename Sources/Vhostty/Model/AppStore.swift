@@ -95,8 +95,8 @@ final class AppStore: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
-        panel.prompt = "添加项目"
-        panel.message = "选择一个项目目录，Claude 会话将在这里启动"
+        panel.prompt = String(localized: "Add Project")
+        panel.message = String(localized: "Choose a project directory. Claude sessions will start there.")
         guard panel.runModal() == .OK else { return }
         var last: Project?
         for url in panel.urls {
@@ -115,13 +115,13 @@ final class AppStore: ObservableObject {
 
     func renameProject(_ project: Project) {
         let alert = NSAlert()
-        alert.messageText = "重命名项目"
+        alert.messageText = String(localized: "Rename Project")
         alert.informativeText = project.path.abbreviatingHome
         let field = NSTextField(string: project.name)
         field.frame = NSRect(x: 0, y: 0, width: 260, height: 24)
         alert.accessoryView = field
-        alert.addButton(withTitle: "确定")
-        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: String(localized: "OK"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.window.initialFirstResponder = field
         guard alert.runModal() == .alertFirstButtonReturn, let name = field.stringValue.nonEmpty else { return }
         updateProject(project.id) { $0.name = name }
@@ -132,7 +132,7 @@ final class AppStore: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.directoryURL = URL(fileURLWithPath: project.path)
-        panel.prompt = "选择"
+        panel.prompt = String(localized: "Choose")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         updateProject(project.id) { $0.path = url.path }
         refreshHistory()
@@ -141,12 +141,12 @@ final class AppStore: ObservableObject {
     func removeProject(_ project: Project) {
         let open = tabs(of: project)
         let alert = NSAlert()
-        alert.messageText = "移除项目「\(project.name)」？"
+        alert.messageText = String(localized: "Remove project “\(project.name)”?")
         alert.informativeText = open.isEmpty
-            ? "只会从 Vhostty 中移除，不会删除任何文件。"
-            : "它的 \(open.count) 个标签页会被关闭（会话记录仍保留，可以之后恢复）。不会删除任何文件。"
-        alert.addButton(withTitle: "移除")
-        alert.addButton(withTitle: "取消")
+            ? String(localized: "It is only removed from Vhostty. No files are deleted.")
+            : String(localized: "Its \(open.count) open sessions will be closed (their history is kept and can be resumed later). No files are deleted.")
+        alert.addButton(withTitle: String(localized: "Remove"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         for tab in open { closeTab(tab, force: true) }
         projects.removeAll { $0.id == project.id }
@@ -262,10 +262,10 @@ final class AppStore: ObservableObject {
         let others = tabs.filter { $0 !== keep && $0.isLaunched && !($0.surface?.processExited ?? true) }
         if !others.isEmpty {
             let alert = NSAlert()
-            alert.messageText = "关闭其他 \(others.count) 个正在运行的会话？"
-            alert.informativeText = "会话记录会保留，之后可以从侧栏恢复。"
-            alert.addButton(withTitle: "关闭")
-            alert.addButton(withTitle: "取消")
+            alert.messageText = String(localized: "Close \(others.count) other running sessions?")
+            alert.informativeText = String(localized: "Their history is kept and can be resumed from the sidebar later.")
+            alert.addButton(withTitle: String(localized: "Close"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
         for tab in tabs where tab !== keep { closeTab(tab, force: true) }
@@ -310,10 +310,10 @@ final class AppStore: ObservableObject {
         if let tab = tabs.first(where: { $0.shellSurface === surface }) {
             if processAlive {
                 let alert = NSAlert()
-                alert.messageText = "关闭底部终端？"
-                alert.informativeText = "终端里还有程序在运行，关闭会结束它。"
-                alert.addButton(withTitle: "关闭")
-                alert.addButton(withTitle: "取消")
+                alert.messageText = String(localized: "Close the bottom terminal?")
+                alert.informativeText = String(localized: "A program is still running in the terminal. Closing will end it.")
+                alert.addButton(withTitle: String(localized: "Close"))
+                alert.addButton(withTitle: String(localized: "Cancel"))
                 guard alert.runModal() == .alertFirstButtonReturn else { return }
             }
             closeShell(tab)
@@ -322,10 +322,10 @@ final class AppStore: ObservableObject {
         guard let tab = tab(for: surface) else { return }
         if processAlive {
             let alert = NSAlert()
-            alert.messageText = "关闭「\(tab.title)」？"
-            alert.informativeText = "Claude 仍在运行，关闭会结束它。会话记录会保留，可以之后从侧栏恢复。"
-            alert.addButton(withTitle: "关闭")
-            alert.addButton(withTitle: "取消")
+            alert.messageText = String(localized: "Close “\(tab.title)”?")
+            alert.informativeText = String(localized: "Claude is still running. Closing will end it. The history is kept and can be resumed from the sidebar later.")
+            alert.addButton(withTitle: String(localized: "Close"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
         closeTab(tab, force: true)
@@ -519,6 +519,9 @@ final class AppStore: ObservableObject {
             }
             let git = GitProbe.probe(cwd) ?? (cwd != project.path ? GitProbe.probe(project.path) : nil)
             let pr = git.flatMap { GitProbe.pullRequest(toplevel: $0.toplevel, branch: $0.branch) }
+                ?? info?.prNumber.flatMap { n in
+                    GitProbe.pullRequest(ref: info?.prURL ?? String(n), cwd: git?.toplevel ?? project.path)
+                }
 
             DispatchQueue.main.async {
                 guard let self else { return }

@@ -180,14 +180,14 @@ final class GhosttyRuntime {
             let alert = NSAlert()
             switch request {
             case GHOSTTY_CLIPBOARD_REQUEST_OSC_52_READ:
-                alert.messageText = "允许终端程序读取剪贴板？"
-                alert.informativeText = "终端里的程序请求读取你的剪贴板内容。"
+                alert.messageText = String(localized: "Allow a terminal program to read the clipboard?")
+                alert.informativeText = String(localized: "A program in the terminal is asking to read your clipboard contents.")
             default:
-                alert.messageText = "粘贴可能不安全的内容？"
+                alert.messageText = String(localized: "Paste potentially unsafe content?")
                 alert.informativeText = String(value.prefix(600))
             }
-            alert.addButton(withTitle: "允许")
-            alert.addButton(withTitle: "取消")
+            alert.addButton(withTitle: String(localized: "Allow"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             let ok = alert.runModal() == .alertFirstButtonReturn
             let result = ok ? value : ""
             result.withCString { ghostty_surface_complete_clipboard_request(surface, $0, state, ok) }
@@ -223,10 +223,10 @@ final class GhosttyRuntime {
         }
         DispatchQueue.main.async {
             let alert = NSAlert()
-            alert.messageText = "允许终端程序写入剪贴板？"
+            alert.messageText = String(localized: "Allow a terminal program to write to the clipboard?")
             alert.informativeText = String((items.first { $0.0 == .string }?.1 ?? "").prefix(600))
-            alert.addButton(withTitle: "允许")
-            alert.addButton(withTitle: "取消")
+            alert.addButton(withTitle: String(localized: "Allow"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             if alert.runModal() == .alertFirstButtonReturn { write() }
         }
     }

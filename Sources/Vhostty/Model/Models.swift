@@ -70,7 +70,7 @@ final class TabSession: ObservableObject, Identifiable {
 
     var isLaunched: Bool { surface != nil }
 
-    init(id: UUID = UUID(), projectID: UUID, sessionID: String, cwd: String, title: String = "新会话",
+    init(id: UUID = UUID(), projectID: UUID, sessionID: String, cwd: String, title: String = String(localized: "New Session"),
          status: SessionStatus = .starting) {
         self.id = id
         self.projectID = projectID

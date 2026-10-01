@@ -69,3 +69,13 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 ## 文档
 
 README 有英文（`README.md`）和中文（`README.zh-CN.md`）两份，改功能、快捷键或构建步骤时两份要一起改。
+
+## 多语言
+
+界面文字在代码里写英文（`String(localized:)`，以及 SwiftUI 的 `Text` / `Button` 等字面量），简体中文翻译在 `Resources/zh-Hans.lproj/Localizable.strings`，英文的单复数在 `Resources/en.lproj/Localizable.stringsdict`。App 跟随系统语言；想单独切换，可以在「系统设置 → 通用 → 语言与地区 → 应用程序」里给 Vhostty 指定语言，或者：
+
+```bash
+defaults write dev.vhostty.Vhostty AppleLanguages '("en")'   # 恢复：defaults delete dev.vhostty.Vhostty AppleLanguages
+```
+
+新增文字时记得同时在 `zh-Hans.lproj` 里加一条翻译，key 就是英文原文（插值写成 `%@` / `%lld`）。

@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
 
         guard GhosttyRuntime.shared.start() else {
             let alert = NSAlert()
-            alert.messageText = "终端引擎初始化失败"
+            alert.messageText = String(localized: "Failed to start the terminal engine")
             alert.runModal()
             NSApp.terminate(nil)
             return
@@ -81,10 +81,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         let live = store.liveSessionCount
         if live > 0 {
             let alert = NSAlert()
-            alert.messageText = "退出 Vhostty？"
-            alert.informativeText = "有 \(live) 个终端仍在运行，退出会结束它们。标签页会被保存，下次打开时可以恢复 Claude 会话。"
-            alert.addButton(withTitle: "退出")
-            alert.addButton(withTitle: "取消")
+            alert.messageText = String(localized: "Quit Vhostty?")
+            alert.informativeText = String(localized: "\(live) terminals are still running and will be ended. Your sessions are saved and can be resumed next time.")
+            alert.addButton(withTitle: String(localized: "Quit"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
             if alert.runModal() != .alertFirstButtonReturn { return .terminateCancel }
         }
         store.save()
@@ -110,83 +110,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         let main = NSMenu()
 
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "关于 Vhostty", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: String(localized: "About Vhostty"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(item("打开 Ghostty 配置文件", #selector(openGhosttyConfig), ""))
-        appMenu.addItem(item("重新加载配置", #selector(reloadConfig), "r", [.command, .shift]))
+        appMenu.addItem(item("Open Ghostty Config", #selector(openGhosttyConfig), ""))
+        appMenu.addItem(item("Reload Config", #selector(reloadConfig), "r", [.command, .shift]))
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "隐藏 Vhostty", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        let hideOthers = NSMenuItem(title: "隐藏其他", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: String(localized: "Hide Vhostty"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = NSMenuItem(title: String(localized: "Hide Others"), action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
         appMenu.addItem(hideOthers)
-        appMenu.addItem(withTitle: "全部显示", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: String(localized: "Show All"), action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "退出 Vhostty", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: String(localized: "Quit Vhostty"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         addSubmenu(main, "Vhostty", appMenu)
 
-        let file = NSMenu(title: "文件")
-        file.addItem(item("新建 Claude 会话", #selector(newSession), "t"))
-        file.addItem(item("添加项目…", #selector(addProject), "o", [.command, .shift]))
+        let file = NSMenu()
+        file.addItem(item("New Claude Session", #selector(newSession), "t"))
+        file.addItem(item("Add Project…", #selector(addProject), "o", [.command, .shift]))
         file.addItem(.separator())
-        file.addItem(item("关闭会话", #selector(closeTab), "w"))
-        addSubmenu(main, "文件", file)
+        file.addItem(item("Close Session", #selector(closeTab), "w"))
+        addSubmenu(main, "File", file)
 
-        let edit = NSMenu(title: "编辑")
-        edit.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "重做", action: Selector(("redo:")), keyEquivalent: "Z")
+        let edit = NSMenu()
+        edit.addItem(withTitle: String(localized: "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: String(localized: "Redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "拷贝", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
-        addSubmenu(main, "编辑", edit)
+        edit.addItem(withTitle: String(localized: "Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: String(localized: "Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: String(localized: "Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: String(localized: "Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        addSubmenu(main, "Edit", edit)
 
-        let view = NSMenu(title: "显示")
-        view.addItem(item("显示/隐藏侧栏", #selector(toggleSidebar), "s", [.command, .control]))
-        view.addItem(item("显示/隐藏终端", #selector(toggleShell), "j"))
+        let view = NSMenu()
+        view.addItem(item("Show/Hide Sidebar", #selector(toggleSidebar), "s", [.command, .control]))
+        view.addItem(item("Show/Hide Terminal", #selector(toggleShell), "j"))
         // Second shortcut (VS Code's ⌃`): a hidden item that still answers its key.
-        let altToggle = item("显示/隐藏终端", #selector(toggleShell), "`", [.control])
+        let altToggle = item("Show/Hide Terminal", #selector(toggleShell), "`", [.control])
         altToggle.isHidden = true
         altToggle.allowsKeyEquivalentWhenHidden = true
         view.addItem(altToggle)
-        view.addItem(item("聚焦 Claude", #selector(focusClaudePane), String(UnicodeScalar(NSUpArrowFunctionKey)!), [.command, .option]))
-        view.addItem(item("聚焦终端", #selector(focusShellPane), String(UnicodeScalar(NSDownArrowFunctionKey)!), [.command, .option]))
+        view.addItem(item("Focus Claude", #selector(focusClaudePane), String(UnicodeScalar(NSUpArrowFunctionKey)!), [.command, .option]))
+        view.addItem(item("Focus Terminal", #selector(focusShellPane), String(UnicodeScalar(NSDownArrowFunctionKey)!), [.command, .option]))
         view.addItem(.separator())
-        view.addItem(item("放大字体", #selector(fontBigger), "="))
-        view.addItem(item("缩小字体", #selector(fontSmaller), "-"))
-        view.addItem(item("实际大小", #selector(fontReset), "0"))
+        view.addItem(item("Increase Font Size", #selector(fontBigger), "="))
+        view.addItem(item("Decrease Font Size", #selector(fontSmaller), "-"))
+        view.addItem(item("Actual Size", #selector(fontReset), "0"))
         view.addItem(.separator())
-        view.addItem(item("进入全屏", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))
-        addSubmenu(main, "显示", view)
+        view.addItem(item("Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))
+        addSubmenu(main, "View", view)
 
-        let win = NSMenu(title: "窗口")
-        win.addItem(withTitle: "最小化", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        win.addItem(withTitle: "缩放", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        let win = NSMenu()
+        win.addItem(withTitle: String(localized: "Minimize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        win.addItem(withTitle: String(localized: "Zoom"), action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         win.addItem(.separator())
-        win.addItem(item("下一个会话", #selector(nextTab), "]", [.command, .shift]))
-        win.addItem(item("上一个会话", #selector(previousTab), "[", [.command, .shift]))
+        win.addItem(item("Next Session", #selector(nextTab), "]", [.command, .shift]))
+        win.addItem(item("Previous Session", #selector(previousTab), "[", [.command, .shift]))
         for i in 1...9 {
-            let it = item("会话 \(i)", #selector(selectTabByTag(_:)), "\(i)")
+            let it = item("Session \(i)", #selector(selectTabByTag(_:)), "\(i)")
             it.tag = i
             win.addItem(it)
         }
         win.addItem(.separator())
-        win.addItem(item("主窗口", #selector(showMainWindow), ""))
-        addSubmenu(main, "窗口", win)
+        win.addItem(item("Main Window", #selector(showMainWindow), ""))
+        addSubmenu(main, "Window", win)
         NSApp.windowsMenu = win
 
         NSApp.mainMenu = main
     }
 
-    private func item(_ title: String, _ action: Selector, _ key: String,
+    private func item(_ title: String.LocalizationValue, _ action: Selector, _ key: String,
                       _ mods: NSEvent.ModifierFlags = [.command]) -> NSMenuItem {
-        let it = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        let it = NSMenuItem(title: String(localized: title), action: action, keyEquivalent: key)
         it.keyEquivalentModifierMask = mods
         it.target = self
         return it
     }
 
-    private func addSubmenu(_ main: NSMenu, _ title: String, _ menu: NSMenu) {
+    private func addSubmenu(_ main: NSMenu, _ key: String.LocalizationValue, _ menu: NSMenu) {
+        let title = String(localized: key)
         menu.title = title
         let holder = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         holder.submenu = menu

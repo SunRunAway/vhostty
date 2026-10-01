@@ -306,11 +306,11 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = NSMenu()
-        menu.addItem(withTitle: "拷贝", action: #selector(copy(_:)), keyEquivalent: "")
-        menu.addItem(withTitle: "粘贴", action: #selector(paste(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "Copy"), action: #selector(copy(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "Paste"), action: #selector(paste(_:)), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "全选", action: #selector(selectAll(_:)), keyEquivalent: "")
-        menu.addItem(withTitle: "清屏", action: #selector(clearScreen(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "Select All"), action: #selector(selectAll(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: String(localized: "Clear Screen"), action: #selector(clearScreen(_:)), keyEquivalent: "")
         return menu
     }
 
