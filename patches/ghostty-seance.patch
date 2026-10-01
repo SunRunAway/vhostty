@@ -1,0 +1,107 @@
+diff --git a/build.zig b/build.zig
+index f9d861b..5a8ed58 100644
+--- a/build.zig
++++ b/build.zig
+@@ -145,6 +145,13 @@ pub fn build(b: *std.Build) !void {
+         }
+     }
+ 
++    // Seance: install a plain static libghostty on macOS too.
++    if (config.app_runtime == .none and config.target.result.os.tag.isDarwin()) {
++        libghostty_static.installHeader();
++        libghostty_static.install("libghostty.a");
++        resources.install();
++    }
++
+     // macOS only artifacts. These will error if they're initialized for
+     // other targets.
+     if (config.target.result.os.tag.isDarwin()) {
+diff --git a/src/build/LibtoolStep.zig b/src/build/LibtoolStep.zig
+index d2b5149..fceaf3a 100644
+--- a/src/build/LibtoolStep.zig
++++ b/src/build/LibtoolStep.zig
+@@ -31,7 +31,27 @@ pub fn create(b: *std.Build, opts: Options) *LibtoolStep {
+     const self = b.allocator.create(LibtoolStep) catch @panic("OOM");
+ 
+     const run_step = RunStep.create(b, b.fmt("libtool {s}", .{opts.name}));
+-    run_step.addArgs(&.{ "libtool", "-static", "-o" });
++    // Seance: newer Apple libtool rejects archive members that are not
++    // 8-byte aligned (as written by zig's archiver), silently dropping them.
++    // Extract every input archive and re-archive the raw objects instead.
++    run_step.addArgs(&.{ "/bin/sh", "-c",
++        \\set -e
++        \\out="$1"; shift
++        \\tmp=$(mktemp -d)
++        \\i=0
++        \\for a in "$@"; do
++        \\  i=$((i+1)); d="$tmp/$i"; mkdir -p "$d"
++        \\  abs="$(cd "$(dirname "$a")" && pwd)/$(basename "$a")"
++        \\  case "$abs" in
++        \\    *.o) cp "$abs" "$d/" ;;
++        \\    *) (cd "$d" && ar x "$abs") ;;
++        \\  esac
++        \\  chmod -R u+rw "$d"
++        \\done
++        \\find "$tmp" -name '*.o' | sort > "$tmp/objs.txt"
++        \\libtool -static -o "$out" -filelist "$tmp/objs.txt"
++        \\rm -rf "$tmp"
++    , "libtool" });
+     const output = run_step.addOutputFileArg(opts.out_name);
+     for (opts.sources) |source| run_step.addFileArg(source);
+ 
+diff --git a/src/build/SharedDeps.zig b/src/build/SharedDeps.zig
+index 9276c99..81c547b 100644
+--- a/src/build/SharedDeps.zig
++++ b/src/build/SharedDeps.zig
+@@ -380,10 +380,10 @@ pub fn add(
+     if (step.rootModuleTarget().os.tag.isDarwin()) {
+         try @import("apple_sdk").addPaths(b, step);
+ 
+-        const metallib = self.metallib.?;
+-        metallib.output.addStepDependencies(&step.step);
++        // Seance: embed the Metal shader *source* and compile it at
++        // runtime so that building does not require Xcode's metal toolchain.
+         step.root_module.addAnonymousImport("ghostty_metallib", .{
+-            .root_source_file = metallib.output,
++            .root_source_file = b.path("src/renderer/shaders/shaders.metal"),
+         });
+     }
+ 
+diff --git a/src/renderer/metal/shaders.zig b/src/renderer/metal/shaders.zig
+index 0be0235..43e5aaa 100644
+--- a/src/renderer/metal/shaders.zig
++++ b/src/renderer/metal/shaders.zig
+@@ -334,23 +334,25 @@ pub const BgImage = extern struct {
+ fn initLibrary(device: objc.Object) !objc.Object {
+     const start = try std.time.Instant.now();
+ 
+-    const data = try macos.dispatch.Data.create(
+-        @embedFile("ghostty_metallib"),
+-        macos.dispatch.queue.getMain(),
+-        macos.dispatch.Data.DESTRUCTOR_DEFAULT,
++    // Seance: compile the shader source at runtime (no Xcode required).
++    const source = objc.getClass("NSString").?.msgSend(
++        objc.Object,
++        objc.sel("stringWithUTF8String:"),
++        .{@as([*:0]const u8, @embedFile("ghostty_metallib"))},
+     );
+-    defer data.release();
+ 
+     var err: ?*anyopaque = null;
+     const library = device.msgSend(
+         objc.Object,
+-        objc.sel("newLibraryWithData:error:"),
++        objc.sel("newLibraryWithSource:options:error:"),
+         .{
+-            data,
++            source,
++            @as(?*anyopaque, null),
+             &err,
+         },
+     );
+-    try checkError(err);
++    // Runtime compilation may report warnings via err even on success.
++    if (library.value == null) try checkError(err);
+ 
+     const end = try std.time.Instant.now();
+     log.debug("shader library loaded time={}us", .{end.since(start) / std.time.ns_per_us});

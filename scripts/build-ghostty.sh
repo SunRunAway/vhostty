@@ -1,0 +1,25 @@
+#!/bin/bash
+# Build libghostty (static) + its resources into build/ghostty.
+# Requires zig 0.15.2 (brew install zig). No Xcode needed.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+"$ROOT/scripts/make-zig-sdk.sh"
+export SEANCE_ZIG_SDK="$ROOT/build/sdk/MacOSX.sdk"
+export PATH="$ROOT/scripts/zig-shim:$PATH"
+cd "$ROOT/vendor/ghostty"
+# Apply Seance's patch (runtime shader compilation, static lib + resources on
+# macOS, libtool fix) unless it is already applied.
+PATCH="$ROOT/patches/ghostty-seance.patch"
+if git apply --reverse --check "$PATCH" 2>/dev/null; then
+  :
+else
+  git apply "$PATCH"
+fi
+zig build \
+  -Doptimize=ReleaseFast \
+  -Demit-xcframework=false \
+  -Demit-macos-app=false \
+  -Di18n=false \
+  --prefix "$ROOT/build/ghostty"
+cp "$ROOT/build/ghostty/include/ghostty.h" "$ROOT/Sources/GhosttyC/include/ghostty.h"
+echo "libghostty ready: $ROOT/build/ghostty/lib/libghostty.a"

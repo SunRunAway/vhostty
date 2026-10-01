@@ -1,0 +1,124 @@
+import Foundation
+
+/// The user's login shell environment, resolved once at startup.
+///
+/// GUI apps launched from Finder get a minimal PATH, so we ask the login shell
+/// for the real one before running git / gh.
+enum ShellEnvironment {
+    static let shell: String = {
+        if let pw = getpwuid(getuid()), let sh = pw.pointee.pw_shell {
+            let s = String(cString: sh)
+            if !s.isEmpty { return s }
+        }
+        return ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+    }()
+
+    private static let lock = NSLock()
+    private static var _path = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+    static var path: String {
+        lock.lock(); defer { lock.unlock() }
+        return _path
+    }
+
+    static func load() {
+        let marker = "__SEANCE_PATH__"
+        let result = Proc.run(shell, ["-l", "-c", "printf '\(marker)%s' \"$PATH\""], timeout: 8, usePathEnv: false)
+        guard let out = result?.stdout, let range = out.range(of: marker) else { return }
+        let p = String(out[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !p.isEmpty else { return }
+        lock.lock()
+        _path = p
+        lock.unlock()
+    }
+
+    static func which(_ name: String) -> String? {
+        for dir in path.split(separator: ":") {
+            let candidate = "\(dir)/\(name)"
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return nil
+    }
+}
+
+/// Minimal synchronous subprocess runner. Call from a background queue.
+enum Proc {
+    struct Result {
+        let status: Int32
+        let stdout: String
+    }
+
+    static func run(
+        _ executable: String,
+        _ args: [String],
+        cwd: String? = nil,
+        timeout: TimeInterval = 10,
+        usePathEnv: Bool = true
+    ) -> Result? {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: executable)
+        p.arguments = args
+        if let cwd { p.currentDirectoryURL = URL(fileURLWithPath: cwd) }
+        var env = ProcessInfo.processInfo.environment
+        if usePathEnv { env["PATH"] = ShellEnvironment.path }
+        env["GIT_OPTIONAL_LOCKS"] = "0"
+        env["GH_PROMPT_DISABLED"] = "1"
+        p.environment = env
+
+        let out = Pipe()
+        p.standardOutput = out
+        p.standardError = FileHandle.nullDevice
+        p.standardInput = FileHandle.nullDevice
+
+        do { try p.run() } catch { return nil }
+
+        // Read concurrently so a chatty process can't fill the pipe and block.
+        var data = Data()
+        let reader = DispatchQueue(label: "seance.proc.read")
+        let group = DispatchGroup()
+        group.enter()
+        reader.async {
+            data = out.fileHandleForReading.readDataToEndOfFile()
+            group.leave()
+        }
+        if group.wait(timeout: .now() + timeout) == .timedOut {
+            p.terminate()
+            _ = group.wait(timeout: .now() + 1)
+        }
+        p.waitUntilExit()
+        return Result(status: p.terminationStatus, stdout: String(decoding: data, as: UTF8.self))
+    }
+}
+
+enum AppPaths {
+    static let support: URL = {
+        let dir: URL
+        if let override = ProcessInfo.processInfo.environment["SEANCE_SUPPORT_DIR"] {
+            dir = URL(fileURLWithPath: override, isDirectory: true)
+        } else {
+            let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            dir = base.appendingPathComponent("Seance", isDirectory: true)
+        }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }()
+
+    static var state: URL { support.appendingPathComponent("state.json") }
+    static var claudeSettings: URL { support.appendingPathComponent("claude-settings.json") }
+
+    static var hookSocket: String {
+        let p = support.appendingPathComponent("hook.sock").path
+        // sockaddr_un.sun_path is 104 bytes.
+        return p.utf8.count < 100 ? p : "/tmp/seance-\(getuid()).sock"
+    }
+}
+
+extension String {
+    /// Replaces the home directory prefix with "~".
+    var abbreviatingHome: String {
+        let home = NSHomeDirectory()
+        if self == home { return "~" }
+        if hasPrefix(home + "/") { return "~" + dropFirst(home.count) }
+        return self
+    }
+}
