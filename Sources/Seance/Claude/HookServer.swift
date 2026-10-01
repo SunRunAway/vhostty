@@ -8,6 +8,7 @@ struct HookEvent {
     let cwd: String?
     let transcriptPath: String?
     let message: String?
+    let notificationType: String?
     let source: String?
 }
 
@@ -18,6 +19,7 @@ final class HookServer {
     let socketPath: String
     private let onEvent: (HookEvent) -> Void
     private var fd: Int32 = -1
+    private let queue = DispatchQueue(label: "seance.hooks.handle")
 
     init(socketPath: String, onEvent: @escaping (HookEvent) -> Void) {
         self.socketPath = socketPath
@@ -50,7 +52,9 @@ final class HookServer {
                     if errno == EINTR { continue }
                     break
                 }
-                DispatchQueue.global(qos: .utility).async { self?.handle(client) }
+                // Serial, in accept order: PostToolUse and Stop arrive back to back
+                // and must not be reordered.
+                self?.queue.async { self?.handle(client) }
             }
         }
         thread.name = "seance.hooks"
@@ -83,6 +87,7 @@ final class HookServer {
             cwd: obj["cwd"] as? String,
             transcriptPath: obj["transcript_path"] as? String,
             message: obj["message"] as? String,
+            notificationType: obj["notification_type"] as? String,
             source: obj["source"] as? String)
         DispatchQueue.main.async { self.onEvent(event) }
     }

@@ -397,7 +397,15 @@ final class AppStore: ObservableObject {
         // Ghostty, honoring the user's Claude notification settings). Hooks only
         // drive the status icon and the unread marker.
         case "Notification":
-            tab.status = .needsInput
+            // "waiting for your input" (idle_prompt) is just idle; anything else
+            // (permission prompts, questions) needs you.
+            let idlePrompt = event.notificationType == "idle_prompt"
+                || (event.message ?? "").localizedCaseInsensitiveContains("waiting for your input")
+            if idlePrompt {
+                if tab.status != .working { tab.status = .idle }
+            } else {
+                tab.status = .needsInput
+            }
             if isBackground { tab.attention = true }
         case "Stop":
             tab.status = .idle

@@ -137,11 +137,10 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
 
     /// Synthesizes a key press (debug driver only).
     func debugPress(keyCode: UInt16, chars: String) {
-        guard let window else { return }
         for type in [NSEvent.EventType.keyDown, .keyUp] {
             guard let ev = NSEvent.keyEvent(
                 with: type, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: window.windowNumber, context: nil, characters: chars,
+                windowNumber: window?.windowNumber ?? 0, context: nil, characters: chars,
                 charactersIgnoringModifiers: chars, isARepeat: false, keyCode: keyCode) else { continue }
             if type == .keyDown { keyDown(with: ev) } else { keyUp(with: ev) }
         }
