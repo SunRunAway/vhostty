@@ -22,7 +22,8 @@ final class DebugSnapshot {
     /// ever goes to a tab named explicitly with `to <tab uuid>`, never to "whatever
     /// is selected", so a test can't type into a real session by accident.
     ///   to <uuid> / toshell <uuid> · text <s> · enter · down · up · esc ·
-    ///   select <uuid> · new · notify · toggleshell · focus claude|shell
+    ///   select <uuid> · new · notify · toggleshell · focus claude|shell ·
+    ///   post <ctrl|cmd|none> <char>
     private func drive() {
         let url = directory.appendingPathComponent("input.txt")
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return }
@@ -50,6 +51,26 @@ final class DebugSnapshot {
                         windowNumber: window.windowNumber, context: nil, characters: parts[2],
                         charactersIgnoringModifiers: parts[2], isARepeat: false, keyCode: parts[2] == "`" ? 0x32 : 0x26) {
                         _ = NSApp.mainMenu?.performKeyEquivalent(with: ev)
+                    }
+                }
+                continue
+            }
+            if line.hasPrefix("post ") {
+                // post <ctrl|cmd|none> <char>: queue a real key press, dispatched by
+                // AppKit like hardware input (key equivalents, then first responder).
+                let parts = line.split(separator: " ").map(String.init)
+                if parts.count == 3, let window = window {
+                    window.makeKey()
+                    let mods: NSEvent.ModifierFlags = parts[1] == "ctrl" ? [.control] : parts[1] == "cmd" ? [.command] : []
+                    let ch = parts[2]
+                    let code: UInt16 = ch == "`" ? 0x32 : ch == "j" ? 0x26 : ch == "x" ? 0x07 : ch == "q" ? 0x0C : 0x00
+                    for type in [NSEvent.EventType.keyDown, .keyUp] {
+                        if let ev = NSEvent.keyEvent(
+                            with: type, location: .zero, modifierFlags: mods, timestamp: ProcessInfo.processInfo.systemUptime,
+                            windowNumber: window.windowNumber, context: nil, characters: ch,
+                            charactersIgnoringModifiers: ch, isARepeat: false, keyCode: code) {
+                            NSApp.postEvent(ev, atStart: false)
+                        }
                     }
                 }
                 continue

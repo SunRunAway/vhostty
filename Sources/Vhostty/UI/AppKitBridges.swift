@@ -48,6 +48,10 @@ final class TerminalContainerView: NSView {
             if let bottom { attach(bottom) }
         }
 
+        // Remember whichever pane actually receives focus (click or programmatic).
+        current?.onFocus = { [weak self] in self?.paneGotFocus(shell: false) }
+        currentShell?.onFocus = { [weak self] in self?.paneGotFocus(shell: true) }
+
         if bottom != nil {
             if divider.superview == nil { addSubview(divider) }
         } else {
@@ -81,6 +85,11 @@ final class TerminalContainerView: NSView {
     func focusPane(shell: Bool) {
         tab?.shellFocused = shell && currentShell != nil
         focusCurrent()
+    }
+
+    private func paneGotFocus(shell: Bool) {
+        guard currentShell != nil else { return }
+        tab?.shellFocused = shell
     }
 
     override func layout() {
@@ -118,23 +127,7 @@ final class TerminalContainerView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        NotificationCenter.default.removeObserver(self)
-        if let window {
-            NotificationCenter.default.addObserver(
-                self, selector: #selector(responderMayHaveChanged),
-                name: NSWindow.didUpdateNotification, object: window)
-        }
         focusCurrent()
-    }
-
-    @objc private func responderMayHaveChanged() {
-        // Track clicks between panes so the remembered pane follows.
-        guard let window, currentShell != nil else { return }
-        if window.firstResponder === currentShell, tab?.shellFocused == false {
-            tab?.shellFocused = true
-        } else if window.firstResponder === current, tab?.shellFocused == true {
-            tab?.shellFocused = false
-        }
     }
 }
 
