@@ -305,6 +305,9 @@ final class AppStore: ObservableObject {
 
     func tab(withID id: UUID) -> TabSession? { tabs.first { $0.id == id } }
 
+    /// Set by the close confirmation's "Don't ask again" checkbox.
+    static let skipCloseConfirmKey = "SkipCloseSessionConfirmation"
+
     /// libghostty asks to close a surface (cmd+w, or the shell exited).
     func surfaceRequestedClose(_ surface: TerminalSurfaceView, processAlive: Bool) {
         if let tab = tabs.first(where: { $0.shellSurface === surface }) {
@@ -320,13 +323,18 @@ final class AppStore: ObservableObject {
             return
         }
         guard let tab = tab(for: surface) else { return }
-        if processAlive {
+        if processAlive && !UserDefaults.standard.bool(forKey: Self.skipCloseConfirmKey) {
             let alert = NSAlert()
             alert.messageText = String(localized: "Close “\(tab.title)”?")
             alert.informativeText = String(localized: "Claude is still running. Closing will end it. The history is kept and can be resumed from the sidebar later.")
             alert.addButton(withTitle: String(localized: "Close"))
             alert.addButton(withTitle: String(localized: "Cancel"))
+            alert.showsSuppressionButton = true
+            alert.suppressionButton?.title = String(localized: "Don’t ask again")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
+            if alert.suppressionButton?.state == .on {
+                UserDefaults.standard.set(true, forKey: Self.skipCloseConfirmKey)
+            }
         }
         closeTab(tab, force: true)
     }
