@@ -1,6 +1,6 @@
 # Vhostty 开发者文档
 
-给想了解实现或参与开发的人看。使用说明见 [README](README.md)。
+给想了解实现或参与开发的人看。使用说明见 [README](README.zh-CN.md)。
 
 ## 工作原理
 
@@ -65,3 +65,7 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 | `cmdj-through-terminal` | 检查 ⌘J 是被终端吃掉还是交给了菜单，结果写到 `keyequiv.txt` |
 
 按键和文字只会发给用 `to` / `toshell` 明确指定的会话。
+
+## 文档
+
+README 有英文（`README.md`）和中文（`README.zh-CN.md`）两份，改功能、快捷键或构建步骤时两份要一起改。
