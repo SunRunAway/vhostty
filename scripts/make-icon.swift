@@ -1,5 +1,64 @@
-// Renders Resources/AppIcon.icns. Run: swift scripts/make-icon.swift
+// Renders the iconset for Resources/AppIcon.icns. A knock-off of Ghostty's icon
+// (metal bezel, blue CRT screen, glowing ghost) with the ghosts stacked as a
+// vertical tab strip and the ">_" prompt turned on its side into "v|".
+// Run: swiftc scripts/make-icon.swift -o /tmp/make-icon && /tmp/make-icon . &&
+//      iconutil -c icns build/AppIcon.iconset -o Resources/AppIcon.icns
 import AppKit
+
+func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> NSColor {
+    NSColor(red: r, green: g, blue: b, alpha: a)
+}
+
+/// Ghost outline in a w×h box at `o`: rounded head, straight sides, three
+/// scallops along the bottom.
+func ghostPath(_ o: NSPoint, _ w: CGFloat, _ h: CGFloat) -> NSBezierPath {
+    let p = NSBezierPath()
+    let r = w * 0.48, wave = h * 0.08
+    p.move(to: NSPoint(x: o.x, y: o.y + wave))
+    p.line(to: NSPoint(x: o.x, y: o.y + h - r))
+    p.appendArc(withCenter: NSPoint(x: o.x + w / 2, y: o.y + h - r), radius: w / 2, startAngle: 180, endAngle: 0, clockwise: true)
+    p.line(to: NSPoint(x: o.x + w, y: o.y + wave))
+    let step = w / 3
+    for i in 0..<3 {
+        let x1 = o.x + w - CGFloat(i) * step, x0 = x1 - step
+        p.curve(to: NSPoint(x: x0, y: o.y + wave),
+                controlPoint1: NSPoint(x: x1 - step * 0.1, y: o.y - wave),
+                controlPoint2: NSPoint(x: x0 + step * 0.1, y: o.y - wave))
+    }
+    p.close()
+    return p
+}
+
+func drawGhost(_ o: NSPoint, _ w: CGFloat, _ h: CGFloat, selected: Bool) {
+    let body = ghostPath(o, w, h)
+    NSGraphicsContext.saveGraphicsState()
+    if selected {
+        let glow = NSShadow()
+        glow.shadowColor = rgb(0.55, 0.75, 1, 0.9)
+        glow.shadowBlurRadius = w * 0.35
+        glow.set()
+    }
+    rgb(0.80, 0.88, 1, selected ? 0.95 : 0.30).setFill()
+    body.fill()
+    NSGraphicsContext.restoreGraphicsState()
+    body.lineWidth = w * 0.045
+    rgb(1, 1, 1, selected ? 1 : 0.35).setStroke()
+    body.stroke()
+
+    // Face: "v" (the ">" turned 90°) and a "|" cursor (the "_" turned 90°).
+    let face = NSBezierPath()
+    let cy = o.y + h * 0.58
+    face.move(to: NSPoint(x: o.x + w * 0.20, y: cy + h * 0.08))
+    face.line(to: NSPoint(x: o.x + w * 0.34, y: cy - h * 0.07))
+    face.line(to: NSPoint(x: o.x + w * 0.48, y: cy + h * 0.08))
+    face.move(to: NSPoint(x: o.x + w * 0.70, y: cy + h * 0.09))
+    face.line(to: NSPoint(x: o.x + w * 0.70, y: cy - h * 0.09))
+    face.lineWidth = w * 0.09
+    face.lineCapStyle = .round
+    face.lineJoinStyle = .round
+    rgb(0.04, 0.07, 0.35, selected ? 1 : 0.5).setStroke()
+    face.stroke()
+}
 
 func render(_ size: CGFloat) -> NSBitmapImageRep {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size), pixelsHigh: Int(size),
@@ -7,37 +66,80 @@ func render(_ size: CGFloat) -> NSBitmapImageRep {
                                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-    let inset = size * 0.1
-    let rect = NSRect(x: inset, y: inset, width: size - 2 * inset, height: size - 2 * inset)
-    let path = NSBezierPath(roundedRect: rect, xRadius: rect.width * 0.225, yRadius: rect.width * 0.225)
-    NSGradient(colors: [NSColor(red: 0.20, green: 0.13, blue: 0.36, alpha: 1),
-                        NSColor(red: 0.07, green: 0.06, blue: 0.12, alpha: 1)])!.draw(in: path, angle: -90)
-    let w = rect.width
-    let accent = NSColor(red: 0.85, green: 0.47, blue: 0.34, alpha: 1)
-    // Vertical tab strip on the left; the second tab is selected.
-    let tabW = w * 0.2, tabH = w * 0.11, gap = w * 0.05
-    let tabX = rect.minX + w * 0.11
-    let stackH = 4 * tabH + 3 * gap
-    for i in 0..<4 {
-        let y = rect.midY + stackH / 2 - tabH - CGFloat(i) * (tabH + gap)
-        let tab = NSBezierPath(roundedRect: NSRect(x: tabX, y: y, width: tabW, height: tabH),
-                               xRadius: tabH * 0.3, yRadius: tabH * 0.3)
-        (i == 1 ? accent : NSColor(white: 1, alpha: 0.16)).setFill()
-        tab.fill()
+    let s = size
+
+    // Metal bezel
+    let outer = NSRect(x: s * 0.1, y: s * 0.1, width: s * 0.8, height: s * 0.8)
+    let bezel = NSBezierPath(roundedRect: outer, xRadius: s * 0.18, yRadius: s * 0.18)
+    NSGraphicsContext.saveGraphicsState()
+    let drop = NSShadow()
+    drop.shadowColor = rgb(0, 0, 0, 0.35)
+    drop.shadowBlurRadius = s * 0.015
+    drop.shadowOffset = NSSize(width: 0, height: -s * 0.008)
+    drop.set()
+    rgb(0.6, 0.6, 0.62).setFill()
+    bezel.fill()
+    NSGraphicsContext.restoreGraphicsState()
+    NSGradient(colors: [rgb(0.93, 0.93, 0.95), rgb(0.62, 0.62, 0.65), rgb(0.80, 0.80, 0.83)])!
+        .draw(in: bezel, angle: -90)
+
+    // Black frame
+    let frameRect = outer.insetBy(dx: s * 0.035, dy: s * 0.035)
+    rgb(0.04, 0.04, 0.05).setFill()
+    NSBezierPath(roundedRect: frameRect, xRadius: s * 0.15, yRadius: s * 0.15).fill()
+
+    // Blue CRT screen
+    let screen = frameRect.insetBy(dx: s * 0.03, dy: s * 0.03)
+    let screenPath = NSBezierPath(roundedRect: screen, xRadius: s * 0.1, yRadius: s * 0.1)
+    NSGraphicsContext.saveGraphicsState()
+    screenPath.addClip()
+    NSGradient(colors: [rgb(0.10, 0.18, 0.95), rgb(0.03, 0.07, 0.62), rgb(0.01, 0.03, 0.35)])!
+        .draw(in: screenPath, relativeCenterPosition: NSPoint(x: -0.4, y: 0.5))
+
+    // Phosphor dot grid (skipped where it would just blur into the gradient)
+    let pitch = s * 0.0125
+    if pitch >= 3 {
+        rgb(0.55, 0.65, 1, 0.3).setFill()
+        let dot = s * 0.003
+        var y = screen.minY + pitch / 2
+        while y < screen.maxY {
+            var x = screen.minX + pitch / 2
+            while x < screen.maxX {
+                NSBezierPath(ovalIn: NSRect(x: x - dot, y: y - dot, width: 2 * dot, height: 2 * dot)).fill()
+                x += pitch
+            }
+            y += pitch
+        }
     }
-    // Soft glow behind the ghost
-    let ghostCenter = NSPoint(x: rect.minX + w * 0.64, y: rect.midY)
-    let glowR = w * 0.3
-    let glow = NSBezierPath(ovalIn: NSRect(x: ghostCenter.x - glowR, y: ghostCenter.y - glowR, width: 2 * glowR, height: 2 * glowR))
-    NSGradient(colors: [accent.withAlphaComponent(0.45), .clear])!
-        .draw(in: glow, relativeCenterPosition: .zero)
-    let ghost = NSAttributedString(string: "👻", attributes: [.font: NSFont.systemFont(ofSize: w * 0.4)])
-    let g = ghost.size()
-    ghost.draw(at: NSPoint(x: ghostCenter.x - g.width / 2, y: ghostCenter.y - g.height / 2 - w * 0.02))
-    let spark = NSAttributedString(string: "✳", attributes: [
-        .font: NSFont.systemFont(ofSize: rect.width * 0.2, weight: .bold),
-        .foregroundColor: NSColor(red: 0.85, green: 0.47, blue: 0.34, alpha: 1)])
-    spark.draw(at: NSPoint(x: rect.maxX - rect.width * 0.3, y: rect.maxY - rect.width * 0.32))
+
+    // Sidebar divider
+    let tabW = screen.width * 0.2, tabH = tabW * 1.1
+    let colX = screen.minX + screen.width * 0.09
+    let divX = colX + tabW + screen.width * 0.08
+    rgb(0.6, 0.75, 1, 0.35).setFill()
+    NSRect(x: divX, y: screen.minY + screen.height * 0.06, width: max(1, s * 0.004), height: screen.height * 0.88).fill()
+
+    // Ghost tabs, top one selected
+    let gap = screen.height * 0.07
+    let top = screen.midY + (3 * tabH + 2 * gap) / 2 - tabH
+    for i in (0..<3).reversed() {
+        drawGhost(NSPoint(x: colX, y: top - CGFloat(i) * (tabH + gap)), tabW, tabH, selected: i == 0)
+    }
+
+    // Glass reflection across the top-right
+    let gloss = NSBezierPath()
+    gloss.move(to: NSPoint(x: screen.minX + screen.width * 0.35, y: screen.maxY))
+    gloss.line(to: NSPoint(x: screen.maxX, y: screen.maxY))
+    gloss.line(to: NSPoint(x: screen.maxX, y: screen.minY + screen.height * 0.45))
+    gloss.close()
+    NSGradient(colors: [rgb(1, 1, 1, 0.10), rgb(1, 1, 1, 0.02)])!.draw(in: gloss, angle: -45)
+    NSGraphicsContext.restoreGraphicsState()
+
+    // Inner bevel highlight on the screen edge
+    screenPath.lineWidth = s * 0.004
+    rgb(1, 1, 1, 0.12).setStroke()
+    screenPath.stroke()
+
     NSGraphicsContext.restoreGraphicsState()
     return rep
 }
