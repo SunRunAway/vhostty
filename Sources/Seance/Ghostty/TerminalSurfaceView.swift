@@ -426,6 +426,10 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard event.type == .keyDown, focused, let surface else { return false }
 
+        // Seance's own shortcuts go to the menu even when Ghostty binds the same
+        // key (Ghostty's default cmd+j is scroll_to_selection).
+        if Self.isAppShortcut(event) { return false }
+
         // Ghostty keybindings (copy/paste, new tab, goto tab, font size, ...) win.
         var keyEv = Self.keyEvent(event, GHOSTTY_ACTION_PRESS)
         var flags = ghostty_binding_flags_e(0)
@@ -648,6 +652,16 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
     }
 
     // MARK: - Helpers
+
+    /// Shortcuts reserved for Seance's menu: ⌘J and ⌃` (toggle the shell panel).
+    static func isAppShortcut(_ event: NSEvent) -> Bool {
+        let mods = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        switch event.keyCode {
+        case 0x26: return mods == [.command]   // J
+        case 0x32: return mods == [.control]   // `
+        default: return false
+        }
+    }
 
     static var keyboardLayoutID: String? {
         guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),

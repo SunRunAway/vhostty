@@ -39,9 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         store.activateSelection()
 
         if let dir = ProcessInfo.processInfo.environment["SEANCE_DEBUG_SNAPSHOT"] {
+            // Test instances stay in the background so they don't steal the user's typing.
             debugSnapshot = DebugSnapshot(directory: dir, window: window, store: store)
+            window.orderBack(nil)
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
         }
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func createWindow() {
@@ -62,7 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         window.contentView = NSHostingView(rootView: RootView(store: store))
         window.center()
         window.setFrameAutosaveName("SeanceMainWindow")
-        window.makeKeyAndOrderFront(nil)
+        if ProcessInfo.processInfo.environment["SEANCE_DEBUG_SNAPSHOT"] == nil {
+            window.makeKeyAndOrderFront(nil)
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

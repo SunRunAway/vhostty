@@ -54,6 +54,21 @@ final class DebugSnapshot {
                 }
                 continue
             }
+            if line == "cmdj-through-terminal", let window = window, let surface = store.selectedTab?.surface {
+                // Mirror AppKit's key-equivalent routing: the window's view tree
+                // first (our terminal), then the main menu.
+                window.makeFirstResponder(surface)
+                if let ev = NSEvent.keyEvent(
+                    with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber, context: nil, characters: "j",
+                    charactersIgnoringModifiers: "j", isARepeat: false, keyCode: 0x26) {
+                    let byView = window.performKeyEquivalent(with: ev)
+                    let byMenu = byView ? false : (NSApp.mainMenu?.performKeyEquivalent(with: ev) ?? false)
+                    try? "terminalConsumed=\(byView) menuHandled=\(byMenu)".write(
+                        to: directory.appendingPathComponent("keyequiv.txt"), atomically: true, encoding: .utf8)
+                }
+                continue
+            }
             if line == "toggleshell" {
                 store.toggleShell()
                 continue
