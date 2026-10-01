@@ -6,8 +6,18 @@ import Foundation
 // It must never write to stdout (some hook outputs are fed back to Claude)
 // and must always exit 0 quickly so it can't disturb the session.
 
+// The tab comes from `--tab <uuid> --sock <path>` (baked into the per-tab
+// settings file, so it survives Claude Code moving the session to its background
+// daemon, whose worker doesn't inherit the tab's environment), else from the env.
+func argument(_ name: String) -> String? {
+    let args = CommandLine.arguments
+    guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
+    return args[i + 1]
+}
+
 let env = ProcessInfo.processInfo.environment
-guard let tab = env["VHOSTTY_TAB_ID"], let sockPath = env["VHOSTTY_SOCK"] else { exit(0) }
+guard let tab = argument("--tab") ?? env["VHOSTTY_TAB_ID"],
+      let sockPath = argument("--sock") ?? env["VHOSTTY_SOCK"] else { exit(0) }
 
 var payload = Data((tab + "\n").utf8)
 payload.append(FileHandle.standardInput.readDataToEndOfFile())

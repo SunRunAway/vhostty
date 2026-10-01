@@ -449,11 +449,14 @@ final class AppStore: ObservableObject {
     func handleHook(_ event: HookEvent) {
         guard let tab = tab(withID: event.tabID) else { return }
         tab.hooksActive = true
-        if let sid = event.sessionID, sid != tab.sessionID {
+        // SessionEnd can come from the tab's own Claude after its session moved
+        // to a background worker (←); it must not take the tab back to the old id.
+        if event.name != "SessionEnd", let sid = event.sessionID, sid != tab.sessionID {
             tab.sessionID = sid
+            tab.transcriptPath = event.transcriptPath
             scheduleSave()
         }
-        if let path = event.transcriptPath { tab.transcriptPath = path }
+        if event.name != "SessionEnd", let path = event.transcriptPath { tab.transcriptPath = path }
         if let cwd = event.cwd { tab.cwd = cwd }
 
         let isBackground = tab.id != selectedTabID || !NSApp.isActive
@@ -527,6 +530,16 @@ final class AppStore: ObservableObject {
                 guard let self else { return }
                 self.refreshing.remove(tab.id)
                 guard self.tabs.contains(where: { $0 === tab }) else { return }
+                // Sent to the background (←): Claude Code forked the session under a
+                // new id. Follow it, or the card keeps the old one and the history
+                // list shows the live session a second time.
+                if let next = info?.continuedIn, tab.sessionID == sessionID, next != sessionID {
+                    tab.sessionID = next
+                    tab.transcriptPath = nil
+                    self.scheduleSave()
+                    self.refreshInfo(tab)
+                    return
+                }
                 if let url { tab.transcriptPath = url.path }
                 tab.workDir = cwd
                 tab.transcript = info
