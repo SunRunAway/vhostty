@@ -40,6 +40,20 @@ final class DebugSnapshot {
                 targetShell = true
                 continue
             }
+            if line.hasPrefix("menukey ") {
+                // menukey <ctrl|cmd> <char>: route a shortcut through the main menu.
+                let parts = line.split(separator: " ").map(String.init)
+                if parts.count == 3, let window = window {
+                    let mods: NSEvent.ModifierFlags = parts[1] == "ctrl" ? [.control] : [.command]
+                    if let ev = NSEvent.keyEvent(
+                        with: .keyDown, location: .zero, modifierFlags: mods, timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: window.windowNumber, context: nil, characters: parts[2],
+                        charactersIgnoringModifiers: parts[2], isARepeat: false, keyCode: parts[2] == "`" ? 0x32 : 0x26) {
+                        _ = NSApp.mainMenu?.performKeyEquivalent(with: ev)
+                    }
+                }
+                continue
+            }
             if line == "toggleshell" {
                 store.toggleShell()
                 continue

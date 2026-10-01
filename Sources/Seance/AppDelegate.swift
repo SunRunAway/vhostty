@@ -138,6 +138,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         let view = NSMenu(title: "显示")
         view.addItem(item("显示/隐藏侧栏", #selector(toggleSidebar), "s", [.command, .control]))
         view.addItem(item("显示/隐藏终端", #selector(toggleShell), "j"))
+        // Second shortcut (VS Code's ⌃`): a hidden item that still answers its key.
+        let altToggle = item("显示/隐藏终端", #selector(toggleShell), "`", [.control])
+        altToggle.isHidden = true
+        altToggle.allowsKeyEquivalentWhenHidden = true
+        view.addItem(altToggle)
         view.addItem(item("聚焦 Claude", #selector(focusClaudePane), String(UnicodeScalar(NSUpArrowFunctionKey)!), [.command, .option]))
         view.addItem(item("聚焦终端", #selector(focusShellPane), String(UnicodeScalar(NSDownArrowFunctionKey)!), [.command, .option]))
         view.addItem(.separator())
