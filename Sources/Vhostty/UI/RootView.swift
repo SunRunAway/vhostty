@@ -90,7 +90,7 @@ struct EmptyStateView: View {
         VStack(spacing: 18) {
             Text("👻")
                 .font(.system(size: 54))
-            Text("Seance")
+            Text("Vhostty")
                 .font(.system(size: 26, weight: .semibold, design: .rounded))
             Text(store.projects.isEmpty
                  ? "添加一个项目目录，然后在里面召唤 Claude。"

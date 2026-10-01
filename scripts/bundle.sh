@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build Seance.app into build/Seance.app.
+# Build Vhostty.app into build/Vhostty.app.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -11,16 +11,16 @@ for sdk in /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk /Library/Develo
   if [ -d "$sdk" ]; then export SDKROOT="$sdk"; break; fi
 done
 
-swift build -c release --product Seance
-swift build -c release --product seance-hook
+swift build -c release --product Vhostty
+swift build -c release --product vhostty-hook
 BIN="$(swift build -c release --show-bin-path)"
 
-APP="$ROOT/build/Seance.app"
+APP="$ROOT/build/Vhostty.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bin"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
-cp "$BIN/Seance" "$APP/Contents/MacOS/Seance"
-cp "$BIN/seance-hook" "$APP/Contents/MacOS/seance-hook"
+cp "$BIN/Vhostty" "$APP/Contents/MacOS/Vhostty"
+cp "$BIN/vhostty-hook" "$APP/Contents/MacOS/vhostty-hook"
 cp Resources/ghostty-defaults.conf "$APP/Contents/Resources/"
 cp Resources/bin/* "$APP/Contents/Resources/bin/"
 chmod +x "$APP/Contents/Resources/bin/"*

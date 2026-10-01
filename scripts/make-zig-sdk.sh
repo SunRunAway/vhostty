@@ -8,11 +8,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="${1:-/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk}"
 DST="$ROOT/build/sdk/MacOSX.sdk"
-if [ -f "$DST/.seance-patched" ]; then exit 0; fi
+if [ -f "$DST/.vhostty-patched" ]; then exit 0; fi
 rm -rf "$DST"; mkdir -p "$(dirname "$DST")"
 SRC="$(cd "$SRC" && pwd -P)"
 cp -Rc "$SRC" "$DST" 2>/dev/null || cp -R "$SRC" "$DST"
 find "$DST" -name '*.tbd' -type f -print0 | xargs -0 perl -0pi -e '
   s{\[([^\]]*)\]}{ my $x=$1; $x =~ s/(?<![\w.-])arm64e-macos/arm64-macos, arm64e-macos/g; "[$x]" }ge'
-touch "$DST/.seance-patched"
+touch "$DST/.vhostty-patched"
 echo "SDK ready: $DST"

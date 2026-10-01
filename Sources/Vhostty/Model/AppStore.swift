@@ -24,7 +24,7 @@ final class AppStore: ObservableObject {
     private var refreshTimer: Timer?
     private var historyTimer: Timer?
     private var saveWork: DispatchWorkItem?
-    private let infoQueue = DispatchQueue(label: "seance.info", qos: .utility)
+    private let infoQueue = DispatchQueue(label: "vhostty.info", qos: .utility)
     private var refreshing: Set<UUID> = []
 
     var selectedTab: TabSession? { tabs.first { $0.id == selectedTabID } }
@@ -143,7 +143,7 @@ final class AppStore: ObservableObject {
         let alert = NSAlert()
         alert.messageText = "移除项目「\(project.name)」？"
         alert.informativeText = open.isEmpty
-            ? "只会从 Seance 中移除，不会删除任何文件。"
+            ? "只会从 Vhostty 中移除，不会删除任何文件。"
             : "它的 \(open.count) 个标签页会被关闭（会话记录仍保留，可以之后恢复）。不会删除任何文件。"
         alert.addButton(withTitle: "移除")
         alert.addButton(withTitle: "取消")
@@ -386,7 +386,7 @@ final class AppStore: ObservableObject {
         let dir = candidates.compactMap { $0 }.first { fm.fileExists(atPath: $0) } ?? NSHomeDirectory()
 
         // A plain login shell (with Ghostty shell integration); deliberately without
-        // SEANCE_TAB_ID so a `claude` started here doesn't report as this card.
+        // VHOSTTY_TAB_ID so a `claude` started here doesn't report as this card.
         let shell = TerminalSurfaceView(options: .init(workingDirectory: dir))
         shell.onPwdChange = { [weak self, weak tab] pwd in
             guard let tab else { return }
@@ -596,7 +596,7 @@ final class AppStore: ObservableObject {
         content.userInfo = ["tab": tab.id.uuidString]
         content.sound = .default
         center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { error in
-            if let error { NSLog("Seance: notification failed: %@", error.localizedDescription) }
+            if let error { NSLog("Vhostty: notification failed: %@", error.localizedDescription) }
         }
     }
 

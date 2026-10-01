@@ -6,7 +6,7 @@ index f9d861b..5a8ed58 100644
          }
      }
  
-+    // Seance: install a plain static libghostty on macOS too.
++    // Vhostty: install a plain static libghostty on macOS too.
 +    if (config.app_runtime == .none and config.target.result.os.tag.isDarwin()) {
 +        libghostty_static.installHeader();
 +        libghostty_static.install("libghostty.a");
@@ -25,7 +25,7 @@ index d2b5149..fceaf3a 100644
  
      const run_step = RunStep.create(b, b.fmt("libtool {s}", .{opts.name}));
 -    run_step.addArgs(&.{ "libtool", "-static", "-o" });
-+    // Seance: newer Apple libtool rejects archive members that are not
++    // Vhostty: newer Apple libtool rejects archive members that are not
 +    // 8-byte aligned (as written by zig's archiver), silently dropping them.
 +    // Extract every input archive and re-archive the raw objects instead.
 +    run_step.addArgs(&.{ "/bin/sh", "-c",
@@ -59,7 +59,7 @@ index 9276c99..81c547b 100644
  
 -        const metallib = self.metallib.?;
 -        metallib.output.addStepDependencies(&step.step);
-+        // Seance: embed the Metal shader *source* and compile it at
++        // Vhostty: embed the Metal shader *source* and compile it at
 +        // runtime so that building does not require Xcode's metal toolchain.
          step.root_module.addAnonymousImport("ghostty_metallib", .{
 -            .root_source_file = metallib.output,
@@ -79,7 +79,7 @@ index 0be0235..43e5aaa 100644
 -        @embedFile("ghostty_metallib"),
 -        macos.dispatch.queue.getMain(),
 -        macos.dispatch.Data.DESTRUCTOR_DEFAULT,
-+    // Seance: compile the shader source at runtime (no Xcode required).
++    // Vhostty: compile the shader source at runtime (no Xcode required).
 +    const source = objc.getClass("NSString").?.msgSend(
 +        objc.Object,
 +        objc.sel("stringWithUTF8String:"),

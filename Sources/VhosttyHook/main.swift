@@ -1,13 +1,13 @@
 import Foundation
 
-// seance-hook: a Claude Code hook command that forwards the hook payload
-// (JSON on stdin) to the Seance app over a Unix socket.
+// vhostty-hook: a Claude Code hook command that forwards the hook payload
+// (JSON on stdin) to the Vhostty app over a Unix socket.
 //
 // It must never write to stdout (some hook outputs are fed back to Claude)
 // and must always exit 0 quickly so it can't disturb the session.
 
 let env = ProcessInfo.processInfo.environment
-guard let tab = env["SEANCE_TAB_ID"], let sockPath = env["SEANCE_SOCK"] else { exit(0) }
+guard let tab = env["VHOSTTY_TAB_ID"], let sockPath = env["VHOSTTY_SOCK"] else { exit(0) }
 
 var payload = Data((tab + "\n").utf8)
 payload.append(FileHandle.standardInput.readDataToEndOfFile())

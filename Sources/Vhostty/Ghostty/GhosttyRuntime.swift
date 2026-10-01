@@ -38,7 +38,7 @@ final class GhosttyRuntime {
         }
 
         guard ghostty_init(UInt(CommandLine.argc), CommandLine.unsafeArgv) == GHOSTTY_SUCCESS else {
-            NSLog("Seance: ghostty_init failed")
+            NSLog("Vhostty: ghostty_init failed")
             return false
         }
 
@@ -61,7 +61,7 @@ final class GhosttyRuntime {
         )
 
         guard let app = ghostty_app_new(&runtime, cfg) else {
-            NSLog("Seance: ghostty_app_new failed")
+            NSLog("Vhostty: ghostty_app_new failed")
             return false
         }
         self.app = app
@@ -80,7 +80,7 @@ final class GhosttyRuntime {
         return true
     }
 
-    /// Seance defaults first, then the user's regular Ghostty config on top.
+    /// Vhostty defaults first, then the user's regular Ghostty config on top.
     private static func loadConfig() -> ghostty_config_t? {
         guard let cfg = ghostty_config_new() else { return nil }
         if let defaults = Bundle.main.path(forResource: "ghostty-defaults", ofType: "conf") {
@@ -93,7 +93,7 @@ final class GhosttyRuntime {
         let n = ghostty_config_diagnostics_count(cfg)
         for i in 0..<n {
             let diag = ghostty_config_get_diagnostic(cfg, i)
-            if let msg = diag.message { NSLog("Seance: ghostty config: %@", String(cString: msg)) }
+            if let msg = diag.message { NSLog("Vhostty: ghostty config: %@", String(cString: msg)) }
         }
         return cfg
     }
@@ -330,7 +330,7 @@ final class GhosttyRuntime {
 
         case GHOSTTY_ACTION_RENDERER_HEALTH:
             if action.action.renderer_health == GHOSTTY_RENDERER_HEALTH_UNHEALTHY {
-                NSLog("Seance: renderer unhealthy")
+                NSLog("Vhostty: renderer unhealthy")
             }
 
         default:

@@ -1,6 +1,6 @@
 import AppKit
 
-// When Seance is started from inside another terminal (or a Claude Code
+// When Vhostty is started from inside another terminal (or a Claude Code
 // session), don't leak that parent's session markers into our terminals.
 for key in ProcessInfo.processInfo.environment.keys
 where key.hasPrefix("CLAUDE") || key.hasPrefix("GHOSTTY_") || key == "AI_AGENT" || key == "TMPPREFIX" {

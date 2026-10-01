@@ -4,12 +4,12 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 "$ROOT/scripts/make-zig-sdk.sh"
-export SEANCE_ZIG_SDK="$ROOT/build/sdk/MacOSX.sdk"
+export VHOSTTY_ZIG_SDK="$ROOT/build/sdk/MacOSX.sdk"
 export PATH="$ROOT/scripts/zig-shim:$PATH"
 cd "$ROOT/vendor/ghostty"
-# Apply Seance's patch (runtime shader compilation, static lib + resources on
+# Apply Vhostty's patch (runtime shader compilation, static lib + resources on
 # macOS, libtool fix) unless it is already applied.
-PATCH="$ROOT/patches/ghostty-seance.patch"
+PATCH="$ROOT/patches/ghostty-vhostty.patch"
 if git apply --reverse --check "$PATCH" 2>/dev/null; then
   :
 else

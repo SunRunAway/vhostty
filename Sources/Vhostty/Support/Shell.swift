@@ -22,7 +22,7 @@ enum ShellEnvironment {
     }
 
     static func load() {
-        let marker = "__SEANCE_PATH__"
+        let marker = "__VHOSTTY_PATH__"
         let result = Proc.run(shell, ["-l", "-c", "printf '\(marker)%s' \"$PATH\""], timeout: 8, usePathEnv: false)
         guard let out = result?.stdout, let range = out.range(of: marker) else { return }
         let p = String(out[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -74,7 +74,7 @@ enum Proc {
 
         // Read concurrently so a chatty process can't fill the pipe and block.
         var data = Data()
-        let reader = DispatchQueue(label: "seance.proc.read")
+        let reader = DispatchQueue(label: "vhostty.proc.read")
         let group = DispatchGroup()
         group.enter()
         reader.async {
@@ -93,11 +93,11 @@ enum Proc {
 enum AppPaths {
     static let support: URL = {
         let dir: URL
-        if let override = ProcessInfo.processInfo.environment["SEANCE_SUPPORT_DIR"] {
+        if let override = ProcessInfo.processInfo.environment["VHOSTTY_SUPPORT_DIR"] {
             dir = URL(fileURLWithPath: override, isDirectory: true)
         } else {
             let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            dir = base.appendingPathComponent("Seance", isDirectory: true)
+            dir = base.appendingPathComponent("Vhostty", isDirectory: true)
         }
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
@@ -109,7 +109,7 @@ enum AppPaths {
     static var hookSocket: String {
         let p = support.appendingPathComponent("hook.sock").path
         // sockaddr_un.sun_path is 104 bytes.
-        return p.utf8.count < 100 ? p : "/tmp/seance-\(getuid()).sock"
+        return p.utf8.count < 100 ? p : "/tmp/vhostty-\(getuid()).sock"
     }
 }
 

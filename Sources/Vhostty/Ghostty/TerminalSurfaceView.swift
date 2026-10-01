@@ -84,7 +84,7 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
             cfg.env_var_count = buf.count
             return ghostty_surface_new(app, &cfg)
         }
-        if surface == nil { NSLog("Seance: ghostty_surface_new failed") }
+        if surface == nil { NSLog("Vhostty: ghostty_surface_new failed") }
     }
 
     /// Asks libghostty to close the surface; it calls back through close_surface_cb.
@@ -426,7 +426,7 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard event.type == .keyDown, focused, let surface else { return false }
 
-        // Seance's own shortcuts go to the menu even when Ghostty binds the same
+        // Vhostty's own shortcuts go to the menu even when Ghostty binds the same
         // key (Ghostty's default cmd+j is scroll_to_selection).
         if Self.isAppShortcut(event) { return false }
 
@@ -653,7 +653,7 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
 
     // MARK: - Helpers
 
-    /// Shortcuts reserved for Seance's menu: ⌘J and ⌃` (toggle the shell panel).
+    /// Shortcuts reserved for Vhostty's menu: ⌘J and ⌃` (toggle the shell panel).
     static func isAppShortcut(_ event: NSEvent) -> Bool {
         let mods = event.modifierFlags.intersection([.command, .control, .option, .shift])
         switch event.keyCode {

@@ -7,7 +7,7 @@ enum ClaudeLauncher {
     /// Writes the extra settings file passed via `claude --settings`. It only adds
     /// hooks (merged with the user's own settings); the user's config is untouched.
     static func writeSettings() {
-        guard let exe = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("seance-hook") else { return }
+        guard let exe = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("vhostty-hook") else { return }
         let hook: [String: Any] = ["type": "command", "command": ShellQuote.quote(exe.path), "timeout": 5]
         var hooks: [String: Any] = [:]
         for name in hookEvents {
@@ -22,7 +22,7 @@ enum ClaudeLauncher {
     }
 
     static var launcherPath: String {
-        (Bundle.main.resourcePath ?? "") + "/bin/seance-claude"
+        (Bundle.main.resourcePath ?? "") + "/bin/vhostty-claude"
     }
 
     /// The shell command for a new tab: an interactive login shell (so the user's
@@ -37,9 +37,9 @@ enum ClaudeLauncher {
 
     static func environment(tabID: UUID) -> [String: String] {
         [
-            "SEANCE_TAB_ID": tabID.uuidString,
-            "SEANCE_SOCK": AppPaths.hookSocket,
-            "SEANCE_CLAUDE_SETTINGS": AppPaths.claudeSettings.path,
+            "VHOSTTY_TAB_ID": tabID.uuidString,
+            "VHOSTTY_SOCK": AppPaths.hookSocket,
+            "VHOSTTY_CLAUDE_SETTINGS": AppPaths.claudeSettings.path,
         ]
     }
 }

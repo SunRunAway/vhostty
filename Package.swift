@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Seance",
+    name: "Vhostty",
     platforms: [.macOS(.v14)],
     targets: [
         .target(
@@ -10,9 +10,9 @@ let package = Package(
             path: "Sources/GhosttyC"
         ),
         .executableTarget(
-            name: "Seance",
+            name: "Vhostty",
             dependencies: ["GhosttyC"],
-            path: "Sources/Seance",
+            path: "Sources/Vhostty",
             linkerSettings: [
                 .unsafeFlags(["-L", "build/ghostty/lib"]),
                 .linkedLibrary("ghostty"),
@@ -28,8 +28,8 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "seance-hook",
-            path: "Sources/SeanceHook"
+            name: "vhostty-hook",
+            path: "Sources/VhosttyHook"
         ),
     ]
 )

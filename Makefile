@@ -9,12 +9,12 @@ app:
 	scripts/bundle.sh
 
 run: app
-	open build/Seance.app
+	open build/Vhostty.app
 
 install: app
-	rm -rf /Applications/Seance.app
-	cp -R build/Seance.app /Applications/Seance.app
-	@echo "Installed to /Applications/Seance.app"
+	rm -rf /Applications/Vhostty.app
+	cp -R build/Vhostty.app /Applications/Vhostty.app
+	@echo "Installed to /Applications/Vhostty.app"
 
 clean:
-	rm -rf .build build/Seance.app
+	rm -rf .build build/Vhostty.app

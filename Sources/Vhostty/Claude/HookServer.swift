@@ -1,6 +1,6 @@
 import Foundation
 
-/// A Claude Code hook event forwarded by `seance-hook`.
+/// A Claude Code hook event forwarded by `vhostty-hook`.
 struct HookEvent {
     let tabID: UUID
     let name: String
@@ -12,14 +12,14 @@ struct HookEvent {
     let source: String?
 }
 
-/// Listens on a Unix socket for hook events sent by the `seance-hook` helper.
+/// Listens on a Unix socket for hook events sent by the `vhostty-hook` helper.
 ///
 /// Wire format: "<tab uuid>\n<hook JSON from Claude Code's stdin>", then EOF.
 final class HookServer {
     let socketPath: String
     private let onEvent: (HookEvent) -> Void
     private var fd: Int32 = -1
-    private let queue = DispatchQueue(label: "seance.hooks.handle")
+    private let queue = DispatchQueue(label: "vhostty.hooks.handle")
 
     init(socketPath: String, onEvent: @escaping (HookEvent) -> Void) {
         self.socketPath = socketPath
@@ -37,7 +37,7 @@ final class HookServer {
             }
         }
         guard bound == 0, listen(fd, 16) == 0 else {
-            NSLog("Seance: hook socket bind failed: %d", errno)
+            NSLog("Vhostty: hook socket bind failed: %d", errno)
             close(fd)
             fd = -1
             return
@@ -57,7 +57,7 @@ final class HookServer {
                 self?.queue.async { self?.handle(client) }
             }
         }
-        thread.name = "seance.hooks"
+        thread.name = "vhostty.hooks"
         thread.start()
     }
 

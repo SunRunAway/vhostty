@@ -2,6 +2,6 @@
 # zig 0.15.x cannot match the arm64e-only .tbd stubs in macOS 26+ SDKs.
 # Point zig at our patched SDK clone (see scripts/make-zig-sdk.sh).
 for a in "$@"; do
-  if [ "$a" = "--show-sdk-path" ]; then echo "${SEANCE_ZIG_SDK:?}"; exit 0; fi
+  if [ "$a" = "--show-sdk-path" ]; then echo "${VHOSTTY_ZIG_SDK:?}"; exit 0; fi
 done
 exec /usr/bin/xcrun "$@"

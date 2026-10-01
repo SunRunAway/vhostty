@@ -38,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         createWindow()
         store.activateSelection()
 
-        if let dir = ProcessInfo.processInfo.environment["SEANCE_DEBUG_SNAPSHOT"] {
+        if let dir = ProcessInfo.processInfo.environment["VHOSTTY_DEBUG_SNAPSHOT"] {
             // Test instances stay in the background so they don't steal the user's typing.
             debugSnapshot = DebugSnapshot(directory: dir, window: window, store: store)
             window.orderBack(nil)
@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
             contentRect: NSRect(x: 0, y: 0, width: 1280, height: 820),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered, defer: false)
-        window.title = "Seance"
+        window.title = "Vhostty"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
@@ -64,8 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         window.delegate = self
         window.contentView = NSHostingView(rootView: RootView(store: store))
         window.center()
-        window.setFrameAutosaveName("SeanceMainWindow")
-        if ProcessInfo.processInfo.environment["SEANCE_DEBUG_SNAPSHOT"] == nil {
+        window.setFrameAutosaveName("VhosttyMainWindow")
+        if ProcessInfo.processInfo.environment["VHOSTTY_DEBUG_SNAPSHOT"] == nil {
             window.makeKeyAndOrderFront(nil)
         }
     }
@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         let live = store.liveSessionCount
         if live > 0 {
             let alert = NSAlert()
-            alert.messageText = "退出 Seance？"
+            alert.messageText = "退出 Vhostty？"
             alert.informativeText = "有 \(live) 个终端仍在运行，退出会结束它们。标签页会被保存，下次打开时可以恢复 Claude 会话。"
             alert.addButton(withTitle: "退出")
             alert.addButton(withTitle: "取消")
@@ -110,19 +110,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         let main = NSMenu()
 
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "关于 Seance", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "关于 Vhostty", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(item("打开 Ghostty 配置文件", #selector(openGhosttyConfig), ""))
         appMenu.addItem(item("重新加载配置", #selector(reloadConfig), "r", [.command, .shift]))
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "隐藏 Seance", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "隐藏 Vhostty", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = NSMenuItem(title: "隐藏其他", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
         appMenu.addItem(hideOthers)
         appMenu.addItem(withTitle: "全部显示", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "退出 Seance", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        addSubmenu(main, "Seance", appMenu)
+        appMenu.addItem(withTitle: "退出 Vhostty", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        addSubmenu(main, "Vhostty", appMenu)
 
         let file = NSMenu(title: "文件")
         file.addItem(item("新建 Claude 会话", #selector(newSession), "t"))
@@ -250,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         // Claude Code's own notification (it detects Ghostty via TERM_PROGRAM).
         // Like Ghostty, only show it when that session isn't what you're looking at.
         guard let surface, let tab = store.tab(for: surface) else { return }
-        NSLog("Seance: desktop notification from tab %@: %@ / %@", tab.id.uuidString, title, body)
+        NSLog("Vhostty: desktop notification from tab %@: %@ / %@", tab.id.uuidString, title, body)
         if tab.id == store.selectedTabID && NSApp.isActive && window.isKeyWindow { return }
         tab.attention = true
         store.updateDockBadge()
