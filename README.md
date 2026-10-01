@@ -1,6 +1,12 @@
-# Vhostty 👻
+<p align="center"><img src="docs/icon.png" width="128" alt="Vhostty icon"></p>
 
-专门用来跑 Claude Code 的 macOS 原生终端。终端引擎用的是 [Ghostty](https://ghostty.org)（libghostty），外壳用 SwiftUI/AppKit 写，没有用任何 Web 技术。
+<h1 align="center">Vhostty</h1>
+
+<p align="center"><b>Claude Code 专用的垂直标签终端</b></p>
+
+Vhostty 是一个 macOS 原生终端，专门用来同时跑好几个 Claude Code 会话。每个会话是左侧栏里的一张卡片，卡片上直接显示 Claude 的状态（干活中 / 等你确认 / 等你输入 / 已完成）、所在分支、worktree 和 PR，不用挨个切过去看。
+
+终端引擎是 [Ghostty](https://ghostty.org)（libghostty），直接沿用你的 Ghostty 配置；外壳用 SwiftUI/AppKit 写，没有用任何 Web 技术。
 
 > Vhostty = **V**ertical + G**hostty**：把 Ghostty 的标签页竖过来，放进左侧栏。
 
@@ -47,7 +53,7 @@
 
 ```bash
 brew install zig          # 需要 0.15.2（Ghostty 1.3.1 的要求）
-git clone --recursive <this repo> vhostty
+git clone --recursive https://github.com/SunRunAway/vhostty.git
 cd vhostty
 make                      # 第一次会先编译 libghostty，大约 5 分钟
 make install              # 拷贝到 /Applications/Vhostty.app
