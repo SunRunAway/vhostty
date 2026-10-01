@@ -460,15 +460,17 @@ final class AppStore: ObservableObject {
         // A new id (the session just moved to a worker) falls back to the tab.
         let bySession = event.sessionID.flatMap { sid in tabs.first { $0.sessionID == sid } }
         guard let tab = bySession ?? event.tabID.flatMap(tab(withID:)) else { return }
+        // SessionEnd from the tab's own Claude for a session that already moved
+        // on to a background worker (←): it neither takes the card back to the
+        // old id nor means the session the card shows has stopped.
+        if event.name == "SessionEnd", let sid = event.sessionID, sid != tab.sessionID { return }
         tab.hooksActive = true
-        // SessionEnd can come from the tab's own Claude after its session moved
-        // to a background worker (←); it must not take the tab back to the old id.
-        if event.name != "SessionEnd", let sid = event.sessionID, sid != tab.sessionID {
+        if let sid = event.sessionID, sid != tab.sessionID {
             tab.sessionID = sid
             tab.transcriptPath = event.transcriptPath
             scheduleSave()
         }
-        if event.name != "SessionEnd", let path = event.transcriptPath { tab.transcriptPath = path }
+        if let path = event.transcriptPath { tab.transcriptPath = path }
         if let cwd = event.cwd { tab.cwd = cwd }
 
         let isBackground = tab.id != selectedTabID || !NSApp.isActive
@@ -548,6 +550,9 @@ final class AppStore: ObservableObject {
                 if let next = info?.continuedIn, tab.sessionID == sessionID, next != sessionID {
                     tab.sessionID = next
                     tab.transcriptPath = nil
+                    // A SessionEnd from the hand-off may have come first; the
+                    // session lives on in the background.
+                    if tab.status == .exited { tab.status = .idle }
                     self.scheduleSave()
                     self.refreshInfo(tab)
                     return
