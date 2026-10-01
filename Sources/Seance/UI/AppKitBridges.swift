@@ -241,22 +241,6 @@ struct WindowDragArea: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
-struct VisualEffect: NSViewRepresentable {
-    var material: NSVisualEffectView.Material = .sidebar
-
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let v = NSVisualEffectView()
-        v.material = material
-        v.blendingMode = .behindWindow
-        v.state = .followsWindowActiveState
-        return v
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-    }
-}
-
 extension View {
     /// Pointing-hand / resize cursors for SwiftUI elements.
     func cursor(_ cursor: NSCursor) -> some View {

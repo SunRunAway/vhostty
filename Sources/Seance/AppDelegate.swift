@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: .darkAqua)
         window.backgroundColor = NSColor(store.terminalBackground)
+        window.isOpaque = true
         window.minSize = NSSize(width: 720, height: 420)
         window.tabbingMode = .disallowed
         window.delegate = self

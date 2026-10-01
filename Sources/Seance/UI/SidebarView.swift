@@ -40,8 +40,9 @@ struct SidebarView: View {
                 .padding(.bottom, 12)
             }
         }
-        .background(Color.black.opacity(0.22))
-        .background(VisualEffect(material: .sidebar))
+        // Solid, opaque background: a behind-window blur makes WindowServer
+        // re-composite the blur every time the terminal draws a frame.
+        .background(Color(red: 0.118, green: 0.118, blue: 0.125))
     }
 }
 
