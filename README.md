@@ -2,7 +2,7 @@
 
 专门用来跑 Claude Code 的 macOS 原生终端。终端引擎用的是 [Ghostty](https://ghostty.org)（libghostty），外壳用 SwiftUI/AppKit 写，没有用任何 Web 技术。
 
-> Séance（降神会）：召唤 Ghost(ty)，然后跟 Claude 对话。
+> Vhostty = **V**ertical + G**hostty**：把 Ghostty 的标签页竖过来，放进左侧栏。
 
 ## 功能
 
@@ -22,6 +22,7 @@
 - **后台通知**：通知直接用 Claude Code 自带的终端通知（它识别出 Ghostty 后会发 OSC 9/777），所以会遵守你在 Claude 里的通知设置。会话没被选中或窗口在后台时，Vhostty 把它转成 macOS 系统通知，点击会跳到对应会话。Claude 一般在干完活、等你约 60 秒后才发通知；卡片上的蓝点和 Dock 角标则会立即更新（靠 hooks）。
 - **历史会话**：每个项目下面列出最近的 Claude 会话，点一下就用 `claude --resume` 恢复。
 - **自动保存**：退出时保存所有会话卡片。下次打开时，点哪个卡片才恢复哪个会话，不会一次性启动一堆 claude。
+- **底部终端**：每个会话都能在 Claude 下面拉出一个普通 shell（⌘J 或 ⌃`），目录跟 Claude 当前所在目录一致。两块之间的分隔条可以拖动，面板开关状态会随会话保存。
 - **复用 Ghostty 配置**：直接读取你的 Ghostty 配置（字体、主题、快捷键），在 `~/.config/ghostty/config` 或 `~/Library/Application Support/com.mitchellh.ghostty/config`。
 
 ## 快捷键
@@ -34,6 +35,8 @@
 | ⌘1…9 | 切换到第 N 个会话 |
 | ⇧⌘[ / ⇧⌘] | 上一个 / 下一个会话 |
 | ⌃⌘S | 显示/隐藏侧栏 |
+| ⌘J / ⌃` | 显示/隐藏底部终端 |
+| ⌥⌘↑ / ⌥⌘↓ | 聚焦 Claude / 聚焦底部终端 |
 | ⌘+ / ⌘- / ⌘0 | 字体放大 / 缩小 / 还原 |
 
 会话卡片和项目都可以右键，里面有更多操作。会话卡片还能拖动排序。
@@ -97,4 +100,19 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 ```
 
 - `VHOSTTY_SUPPORT_DIR`：使用一份独立的状态目录，不影响正式数据。
-- `VHOSTTY_DEBUG_SNAPSHOT`：每 1.5 秒把窗口截图和状态写到这个目录（`window.png`、`state.txt`）。往 `input.txt` 写命令可以驱动 App：先用 `to <会话卡片 UUID>` 指定目标，再用 `text …`、`enter`、`down`、`notify` 操作；`select <UUID>` 切换会话，`new` 新建会话。输入只会发给明确指定的会话。
+- `VHOSTTY_DEBUG_SNAPSHOT`：每 1.5 秒把窗口截图和状态写到这个目录（`window.png`、`state.txt`）。往 `input.txt` 写命令可以驱动 App，一行一条：
+
+| 命令 | 作用 |
+|---|---|
+| `to <UUID>` / `toshell <UUID>` | 指定后面按键发给哪个会话的 Claude 终端 / 底部终端 |
+| `text …`、`enter`、`up`、`down`、`esc` | 往指定的终端输入文字或按键 |
+| `notify` | 给指定会话发一条测试通知，授权状态写到 `notify.txt` |
+| `select <UUID>` | 切换到这个会话 |
+| `new` | 新建会话 |
+| `toggleshell` | 开关当前会话的底部终端 |
+| `focus claude` / `focus shell` | 聚焦上面 / 下面的终端 |
+| `menukey <ctrl\|cmd> <字符>` | 把快捷键直接交给主菜单处理 |
+| `post <ctrl\|cmd\|none> <字符>` | 模拟一次真实按键，走 AppKit 正常的分发流程 |
+| `cmdj-through-terminal` | 检查 ⌘J 是被终端吃掉还是交给了菜单，结果写到 `keyequiv.txt` |
+
+按键和文字只会发给用 `to` / `toshell` 明确指定的会话。
