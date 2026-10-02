@@ -460,6 +460,12 @@ final class AppStore: ObservableObject {
         updateTitle(tab)
     }
 
+    /// Claude Code's "waiting for your input" reminder, sent 60s after a turn ends
+    /// with no input.
+    static func isIdleReminder(_ text: String) -> Bool {
+        text.localizedCaseInsensitiveContains("waiting for your input")
+    }
+
     /// Whether the user isn't looking at the card, so a change earns the unread marker.
     private func isBackground(_ tab: TabSession) -> Bool {
         tab.id != selectedTabID || !NSApp.isActive
@@ -496,14 +502,14 @@ final class AppStore: ObservableObject {
         case "Notification":
             // "waiting for your input" (idle_prompt) is just idle; anything else
             // (permission prompts, questions) needs you.
-            let idlePrompt = event.notificationType == "idle_prompt"
-                || (event.message ?? "").localizedCaseInsensitiveContains("waiting for your input")
-            if idlePrompt {
+            // The idle reminder only repeats a finished turn, whose unread marker
+            // was already decided when it finished (terminalTitleChanged).
+            if event.notificationType == "idle_prompt" || Self.isIdleReminder(event.message ?? "") {
                 if tab.status != .working { tab.status = .idle }
             } else {
                 tab.status = .needsInput
+                if isBackground(tab) { tab.attention = true }
             }
-            if isBackground(tab) { tab.attention = true }
         case "SessionEnd":
             tab.status = .exited
         default:

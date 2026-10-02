@@ -253,6 +253,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         guard let surface, let tab = store.tab(for: surface) else { return }
         NSLog("Vhostty: desktop notification from tab %@: %@ / %@", tab.id.uuidString, title, body)
         if tab.id == store.selectedTabID && NSApp.isActive && window.isKeyWindow { return }
+        // The idle reminder fires 60s after the turn ended. If you saw the reply
+        // (the card isn't unread), switching away since doesn't make it news.
+        if AppStore.isIdleReminder(title + " " + body) && !tab.attention { return }
         tab.attention = true
         store.updateDockBadge()
         store.notify(tab, body: body.isEmpty ? title : body)
