@@ -38,6 +38,7 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
     private var contentSize: NSSize = .zero
     private var currentCursor: NSCursor = .iBeam
     private var observers: [NSObjectProtocol] = []
+    private var screenContentsCache: (text: String, at: Date)?
 
     init(options: Options) {
         super.init(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
@@ -554,14 +555,16 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
 
     func hasMarkedText() -> Bool { markedText.length > 0 }
 
+    // Empty ranges are (0, 0) rather than NSNotFound, as in Ghostty: some input
+    // methods (e.g. Doubao voice input) never commit their text otherwise.
     func markedRange() -> NSRange {
-        markedText.length > 0 ? NSRange(location: 0, length: markedText.length) : NSRange(location: NSNotFound, length: 0)
+        markedText.length > 0 ? NSRange(location: 0, length: markedText.length) : NSRange()
     }
 
     func selectedRange() -> NSRange {
-        guard let surface else { return NSRange(location: NSNotFound, length: 0) }
+        guard let surface else { return NSRange() }
         var text = ghostty_text_s()
-        guard ghostty_surface_read_selection(surface, &text) else { return NSRange(location: NSNotFound, length: 0) }
+        guard ghostty_surface_read_selection(surface, &text) else { return NSRange() }
         defer { ghostty_surface_free_text(surface, &text) }
         return NSRange(location: Int(text.offset_start), length: Int(text.offset_len))
     }
@@ -649,6 +652,92 @@ final class TerminalSurfaceView: NSView, NSTextInputClient {
         } else if clearIfNeeded {
             ghostty_surface_preedit(surface, nil, 0)
         }
+    }
+
+    // MARK: - Services
+
+    override func validRequestor(forSendType sendType: NSPasteboard.PasteboardType?,
+                                 returnType: NSPasteboard.PasteboardType?) -> Any? {
+        let types: [NSPasteboard.PasteboardType] = [.string, .init("public.utf8-plain-text")]
+        guard returnType.map(types.contains) ?? true, sendType.map(types.contains) ?? true else {
+            return super.validRequestor(forSendType: sendType, returnType: returnType)
+        }
+        if sendType != nil, surface == nil || !ghostty_surface_has_selection(surface) {
+            return super.validRequestor(forSendType: sendType, returnType: returnType)
+        }
+        return self
+    }
+
+    @objc func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
+        guard let surface else { return false }
+        var text = ghostty_text_s()
+        guard ghostty_surface_read_selection(surface, &text) else { return false }
+        defer { ghostty_surface_free_text(surface, &text) }
+        pboard.declareTypes([.string], owner: nil)
+        pboard.setString(String(cString: text.text), forType: .string)
+        return true
+    }
+
+    @objc func readSelection(from pboard: NSPasteboard) -> Bool {
+        guard let str = pboard.opinionatedString() else { return false }
+        sendText(str)
+        return true
+    }
+
+    // MARK: - Accessibility
+    //
+    // Exposed as an editable text area, as Ghostty does. Voice input apps look for
+    // a focused text element before committing their text.
+
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .textArea }
+    override func accessibilityHelp() -> String? { "Terminal content area" }
+    override func accessibilityValue() -> Any? { screenContents }
+    override func accessibilitySelectedTextRange() -> NSRange { selectedRange() }
+
+    override func accessibilitySelectedText() -> String? {
+        guard let surface else { return nil }
+        var text = ghostty_text_s()
+        guard ghostty_surface_read_selection(surface, &text) else { return nil }
+        defer { ghostty_surface_free_text(surface, &text) }
+        let str = String(cString: text.text)
+        return str.isEmpty ? nil : str
+    }
+
+    override func accessibilityNumberOfCharacters() -> Int { screenContents.count }
+
+    override func accessibilityVisibleCharacterRange() -> NSRange {
+        NSRange(location: 0, length: screenContents.count)
+    }
+
+    override func accessibilityLine(for index: Int) -> Int {
+        String(screenContents.prefix(index)).components(separatedBy: .newlines).count - 1
+    }
+
+    override func accessibilityString(for range: NSRange) -> String? {
+        let content = screenContents
+        guard let r = Range(range, in: content) else { return nil }
+        return String(content[r])
+    }
+
+    /// The whole screen's text, cached for half a second since assistive
+    /// tools query it many times in a row.
+    private var screenContents: String {
+        if let cache = screenContentsCache, Date().timeIntervalSince(cache.at) < 0.5 { return cache.text }
+        var result = ""
+        if let surface {
+            var text = ghostty_text_s()
+            let sel = ghostty_selection_s(
+                top_left: ghostty_point_s(tag: GHOSTTY_POINT_SCREEN, coord: GHOSTTY_POINT_COORD_TOP_LEFT, x: 0, y: 0),
+                bottom_right: ghostty_point_s(tag: GHOSTTY_POINT_SCREEN, coord: GHOSTTY_POINT_COORD_BOTTOM_RIGHT, x: 0, y: 0),
+                rectangle: false)
+            if ghostty_surface_read_text(surface, sel, &text) {
+                result = String(cString: text.text)
+                ghostty_surface_free_text(surface, &text)
+            }
+        }
+        screenContentsCache = (result, Date())
+        return result
     }
 
     // MARK: - Helpers
