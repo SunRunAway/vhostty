@@ -26,8 +26,6 @@ final class AppStore: ObservableObject {
     private var saveWork: DispatchWorkItem?
     private let infoQueue = DispatchQueue(label: "vhostty.info", qos: .utility)
     private var refreshing: Set<UUID> = []
-    /// Background job state-file dates already applied (see refreshBackgroundStatus).
-    private var jobStamps: [String: Date] = [:]
 
     var selectedTab: TabSession? { tabs.first { $0.id == selectedTabID } }
 
@@ -422,10 +420,9 @@ final class AppStore: ObservableObject {
 
     /// Claude Code prefixes its terminal title with a status glyph: a spinner
     /// while working, "✳" otherwise. This is the only source of working / idle:
-    /// it also covers turns that end without a Stop hook (Esc) and attached
-    /// background sessions that send no hooks. "✳" also shows while Claude waits
-    /// for an answer or a permission, so needing you comes from elsewhere
-    /// (Notification hook, or the job state file).
+    /// it also covers turns that end without a Stop hook (Esc). "✳" also shows
+    /// while Claude waits for an answer or a permission, so needing you comes
+    /// from the Notification hook.
     private func terminalTitleChanged(_ tab: TabSession, _ raw: String) {
         var title = raw.trimmingCharacters(in: .whitespaces)
         var glyph: Character?
@@ -478,15 +475,7 @@ final class AppStore: ObservableObject {
     }
 
     func handleHook(_ event: HookEvent) {
-        // The session id decides first: a background worker may carry no tab, or
-        // the tab it was started from, while another card has since attached to it.
-        // A new id (the session just moved to a worker) falls back to the tab.
-        let bySession = event.sessionID.flatMap { sid in tabs.first { $0.sessionID == sid } }
-        guard let tab = bySession ?? event.tabID.flatMap(tab(withID:)) else { return }
-        // SessionEnd from the tab's own Claude for a session that already moved
-        // on to a background worker (←): it neither takes the card back to the
-        // old id nor means the session the card shows has stopped.
-        if event.name == "SessionEnd", let sid = event.sessionID, sid != tab.sessionID { return }
+        guard let tab = tab(withID: event.tabID) else { return }
         tab.hooksActive = true
         if let sid = event.sessionID, sid != tab.sessionID {
             tab.sessionID = sid
@@ -528,46 +517,6 @@ final class AppStore: ObservableObject {
 
     private func refreshAllInfo() {
         for tab in tabs { refreshInfo(tab) }
-        refreshBackgroundStatus()
-    }
-
-    /// A session in Claude Code's background daemon may send no hooks at all (a
-    /// worker taken over from a pre-started spare ignores `--settings`). `claude
-    /// attach` passes the worker's terminal title through, but only as it changes:
-    /// attached to an idle session, the card gets none and would stay "Starting".
-    /// Such cards read the job's state file (~/.claude/jobs/<short id>/state.json,
-    /// re-read only when it changes) for the status they start in, and for a
-    /// question waiting for you, which the title can't show. Its `tempo` is live;
-    /// its `state` lags behind.
-    private func refreshBackgroundStatus() {
-        let jobs = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/jobs")
-        for tab in tabs where tab.surface != nil && !tab.hooksActive {
-            let file = jobs.appendingPathComponent(String(tab.sessionID.prefix(8)))
-                .appendingPathComponent("state.json")
-            guard let mtime = Transcript.modificationDate(file),
-                  jobStamps[tab.sessionID] != mtime || tab.status == .starting,
-                  let data = try? Data(contentsOf: file),
-                  let job = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-                  job["sessionId"] as? String == tab.sessionID else { continue }
-            jobStamps[tab.sessionID] = mtime
-
-            // An unknown value (the file is Claude Code's, not a public format)
-            // leaves the card as it is.
-            let status: SessionStatus
-            switch job["tempo"] as? String {
-            case "active": status = .working
-            case "blocked": status = .needsInput
-            case "idle": status = .idle
-            default: continue
-            }
-            // Past the start, working / idle follow the title; the file only
-            // raises a question and clears it once answered.
-            guard status != tab.status,
-                  tab.status == .starting || tab.status == .needsInput || status == .needsInput else { continue }
-            if status == .needsInput, isBackground(tab) { tab.attention = true }
-            tab.status = status
-        }
-        updateDockBadge()
     }
 
     func refreshInfo(_ tab: TabSession) {
@@ -602,19 +551,6 @@ final class AppStore: ObservableObject {
                 guard let self else { return }
                 self.refreshing.remove(tab.id)
                 guard self.tabs.contains(where: { $0 === tab }) else { return }
-                // Sent to the background (←): Claude Code forked the session under a
-                // new id. Follow it, or the card keeps the old one and the history
-                // list shows the live session a second time.
-                if let next = info?.continuedIn, tab.sessionID == sessionID, next != sessionID {
-                    tab.sessionID = next
-                    tab.transcriptPath = nil
-                    // Whether its worker sends hooks is yet to be seen; until
-                    // then its status comes from the background job.
-                    tab.hooksActive = false
-                    self.scheduleSave()
-                    self.refreshInfo(tab)
-                    return
-                }
                 if let url { tab.transcriptPath = url.path }
                 tab.workDir = cwd
                 tab.transcript = info

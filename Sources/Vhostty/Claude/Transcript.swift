@@ -13,9 +13,6 @@ struct TranscriptInfo {
     var worktree: (name: String, path: String)??
     var cwd: String?
     var gitBranch: String?
-    /// Set when this is the latest record: the session lives on under another id
-    /// (Claude Code forks it when sending it to the background with ←).
-    var continuedIn: String?
     var modified: Date = .distantPast
 
     var bestTitle: String? { customTitle ?? aiTitle ?? summary ?? firstPrompt }
@@ -81,14 +78,9 @@ enum Transcript {
         if start > 0, !lines.isEmpty { lines.removeFirst() } // partial line
 
         var needCwd = true
-        var sawMessage = false
         for line in lines.reversed() {
             let s = String(decoding: line, as: UTF8.self)
-            let isMessage = s.contains("\"type\":\"user\"") || s.contains("\"type\":\"assistant\"")
-            defer { sawMessage = sawMessage || isMessage }
-            if !sawMessage, info.continuedIn == nil, s.contains("\"type\":\"continued-in\"") {
-                info.continuedIn = (json(s)?["continuedInSessionId"] as? String)?.nonEmpty
-            } else if info.customTitle == nil, s.contains("\"type\":\"custom-title\"") {
+            if info.customTitle == nil, s.contains("\"type\":\"custom-title\"") {
                 info.customTitle = (json(s)?["customTitle"] as? String)?.nonEmpty
             } else if info.aiTitle == nil, s.contains("\"type\":\"ai-title\"") {
                 info.aiTitle = (json(s)?["aiTitle"] as? String)?.nonEmpty
@@ -106,7 +98,7 @@ enum Transcript {
                 } else {
                     info.worktree = .some(nil)
                 }
-            } else if needCwd, isMessage, s.contains("\"cwd\":") {
+            } else if needCwd, s.contains("\"cwd\":"), s.contains("\"type\":\"user\"") || s.contains("\"type\":\"assistant\"") {
                 if let obj = json(s), let cwd = obj["cwd"] as? String {
                     info.cwd = cwd
                     info.gitBranch = obj["gitBranch"] as? String
@@ -165,9 +157,7 @@ enum Transcript {
         var result: [SessionSummary] = []
         for (url, date) in dated {
             if result.count >= limit { break }
-            // A session continued elsewhere is listed under its continuation.
-            guard let info = read(url, tailBytes: 256 * 1024), info.continuedIn == nil,
-                  let title = info.bestTitle else { continue }
+            guard let info = read(url, tailBytes: 256 * 1024), let title = info.bestTitle else { continue }
             result.append(SessionSummary(
                 id: url.deletingPathExtension().lastPathComponent,
                 title: title, modified: date, path: url))

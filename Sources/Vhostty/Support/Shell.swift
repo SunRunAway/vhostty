@@ -105,11 +105,6 @@ enum AppPaths {
 
     static var state: URL { support.appendingPathComponent("state.json") }
     static var claudeSettings: URL { support.appendingPathComponent("claude-settings.json") }
-    static let tabSettings: URL = {
-        let dir = support.appendingPathComponent("tab-settings", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }()
 
     static var hookSocket: String {
         let p = support.appendingPathComponent("hook.sock").path

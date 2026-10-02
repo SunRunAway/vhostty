@@ -1,23 +1,6 @@
 #!/bin/sh
 # Started by Vhostty in each tab: runs Claude Code with Vhostty's extra hook
 # settings (merged with your own ~/.claude settings, which stay untouched).
-if ! command -v claude >/dev/null 2>&1; then
-  printf '\033[31mVhostty: 找不到 claude 命令。\033[0m\n'
-  printf '请先安装 Claude Code: https://docs.anthropic.com/claude-code\n'
-  exit 127
-fi
-# A session sent to the background (←) can't be resumed while it runs there;
-# open it with `claude attach` instead (it keeps running when you leave).
-if [ "$1" = "--resume" ] && [ -n "$2" ]; then
-  job=$(claude agents --json 2>/dev/null | awk -v sid="$2" '
-    $1 == "\"id\":" { id = $2; gsub(/[",]/, "", id) }
-    $1 == "\"kind\":" && $2 ~ /"background"/ { bg = 1 }
-    $1 == "\"sessionId\":" { s = $2; gsub(/[",]/, "", s) }
-    $1 ~ /^}/ { if (bg && s == sid && id != "") { print id; exit } id = ""; bg = 0; s = "" }')
-  if [ -n "$job" ]; then
-    exec claude attach "$job"
-  fi
-fi
 if [ -n "$VHOSTTY_CLAUDE_SETTINGS" ] && [ -f "$VHOSTTY_CLAUDE_SETTINGS" ]; then
   exec claude --settings "$VHOSTTY_CLAUDE_SETTINGS" "$@"
 fi
