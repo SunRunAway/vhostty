@@ -57,6 +57,8 @@ final class TabSession: ObservableObject, Identifiable {
     var workDir: String?
     var transcriptPath: String?
     var terminalTitle: String?
+    /// Whether Claude's last terminal title carried its working spinner.
+    var titleBusy = false
     var transcript: TranscriptInfo?
     var hooksActive = false
     var surface: TerminalSurfaceView?

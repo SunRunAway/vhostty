@@ -360,6 +360,7 @@ final class AppStore: ObservableObject {
         tab.transcriptPath = transcript?.path
         tab.status = .starting
         tab.hooksActive = false
+        tab.titleBusy = false
         refreshInfo(tab)
     }
 
@@ -419,8 +420,12 @@ final class AppStore: ObservableObject {
 
     // MARK: - Titles & status
 
-    /// Claude Code prefixes its terminal title with a status glyph: a braille
-    /// spinner while working, "✳" when idle.
+    /// Claude Code prefixes its terminal title with a status glyph: a spinner
+    /// while working, "✳" otherwise. This is the only source of working / idle:
+    /// it also covers turns that end without a Stop hook (Esc) and attached
+    /// background sessions that send no hooks. "✳" also shows while Claude waits
+    /// for an answer or a permission, so needing you comes from elsewhere
+    /// (Notification hook, or the job state file).
     private func terminalTitleChanged(_ tab: TabSession, _ raw: String) {
         var title = raw.trimmingCharacters(in: .whitespaces)
         var glyph: Character?
@@ -430,13 +435,24 @@ final class AppStore: ObservableObject {
             title = String(title.dropFirst(2)).trimmingCharacters(in: .whitespaces)
         }
 
-        // "✳" means idle / waiting for you; any other glyph (◐◓◑◒, braille dots, ✶✻…)
-        // is Claude's working spinner.
+        // Any glyph other than "✳" (◐◓◑◒, braille dots, ✶✻…) is the spinner.
         if let g = glyph {
-            let idle = g == "✳"
-            if !idle, tab.status != .needsInput {
-                tab.status = .working
-            } else if idle, !tab.hooksActive, tab.status == .working || tab.status == .starting {
+            let busy = g != "✳"
+            let wasBusy = tab.titleBusy
+            tab.titleBusy = busy
+            if busy {
+                // The spinner coming back means Claude went on (the question was
+                // answered); later frames of the same spin don't undo a question
+                // raised by a hook meanwhile.
+                if !wasBusy || tab.status != .needsInput { tab.status = .working }
+            } else if tab.status == .working {
+                tab.status = .idle
+                if isBackground(tab) {
+                    tab.attention = true
+                    updateDockBadge()
+                }
+                refreshHistory()
+            } else if tab.status == .starting {
                 tab.status = .idle
             }
         }
@@ -445,6 +461,11 @@ final class AppStore: ObservableObject {
             || title.hasPrefix("/") || title.hasPrefix("~") || title.contains("@")
         tab.terminalTitle = generic ? nil : title
         updateTitle(tab)
+    }
+
+    /// Whether the user isn't looking at the card, so a change earns the unread marker.
+    private func isBackground(_ tab: TabSession) -> Bool {
+        tab.id != selectedTabID || !NSApp.isActive
     }
 
     private func updateTitle(_ tab: TabSession) {
@@ -475,12 +496,11 @@ final class AppStore: ObservableObject {
         if let path = event.transcriptPath { tab.transcriptPath = path }
         if let cwd = event.cwd { tab.cwd = cwd }
 
-        let isBackground = tab.id != selectedTabID || !NSApp.isActive
+        // Working / idle come from the terminal title (terminalTitleChanged); hooks
+        // add what the title can't tell: that Claude needs you, and that it exited.
         switch event.name {
         case "SessionStart":
-            if tab.status != .working { tab.status = .idle }
-        case "UserPromptSubmit", "PostToolUse":
-            tab.status = .working
+            if tab.status == .starting { tab.status = .idle }
         // System notifications come from Claude Code itself (OSC 9/777 through
         // Ghostty, honoring the user's Claude notification settings). Hooks only
         // drive the status icon and the unread marker.
@@ -494,11 +514,7 @@ final class AppStore: ObservableObject {
             } else {
                 tab.status = .needsInput
             }
-            if isBackground { tab.attention = true }
-        case "Stop":
-            tab.status = .idle
-            if isBackground { tab.attention = true }
-            refreshHistory()
+            if isBackground(tab) { tab.attention = true }
         case "SessionEnd":
             tab.status = .exited
         default:
@@ -516,10 +532,13 @@ final class AppStore: ObservableObject {
     }
 
     /// A session in Claude Code's background daemon may send no hooks at all (a
-    /// worker taken over from a pre-started spare ignores `--settings`), and
-    /// `claude attach` sets no terminal title. Such cards take their status from
-    /// the job's state file (~/.claude/jobs/<short id>/state.json), re-read only
-    /// when it changes. Its `tempo` is live; its `state` lags behind.
+    /// worker taken over from a pre-started spare ignores `--settings`). `claude
+    /// attach` passes the worker's terminal title through, but only as it changes:
+    /// attached to an idle session, the card gets none and would stay "Starting".
+    /// Such cards read the job's state file (~/.claude/jobs/<short id>/state.json,
+    /// re-read only when it changes) for the status they start in, and for a
+    /// question waiting for you, which the title can't show. Its `tempo` is live;
+    /// its `state` lags behind.
     private func refreshBackgroundStatus() {
         let jobs = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".claude/jobs")
         for tab in tabs where tab.surface != nil && !tab.hooksActive {
@@ -541,10 +560,11 @@ final class AppStore: ObservableObject {
             case "idle": status = .idle
             default: continue
             }
-            guard status != tab.status else { continue }
-            if status != .working, tab.status == .working, tab.id != selectedTabID || !NSApp.isActive {
-                tab.attention = true
-            }
+            // Past the start, working / idle follow the title; the file only
+            // raises a question and clears it once answered.
+            guard status != tab.status,
+                  tab.status == .starting || tab.status == .needsInput || status == .needsInput else { continue }
+            if status == .needsInput, isBackground(tab) { tab.attention = true }
             tab.status = status
         }
         updateDockBadge()
