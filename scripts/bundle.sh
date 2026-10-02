@@ -11,8 +11,14 @@ for sdk in /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk /Library/Develo
   if [ -d "$sdk" ]; then export SDKROOT="$sdk"; break; fi
 done
 
-swift build -c release --product Vhostty
-swift build -c release --product vhostty-hook
+# Without Xcode, SwiftPM still adds the XCTest search paths under
+# CommandLineTools/Developer, which don't exist; drop ld's warnings about them.
+build() {
+  swift build -c release --product "$1" 2>&1 \
+    | sed "\\#ld: warning: search path '/Library/Developer/CommandLineTools/Developer/#d"
+}
+build Vhostty
+build vhostty-hook
 BIN="$(swift build -c release --show-bin-path)"
 
 APP="$ROOT/build/Vhostty.app"

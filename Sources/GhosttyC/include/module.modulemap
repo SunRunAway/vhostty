@@ -1,5 +1,6 @@
 module GhosttyC {
     header "ghostty.h"
+    header "vhostty_shim.h"
     link "ghostty"
     export *
 }

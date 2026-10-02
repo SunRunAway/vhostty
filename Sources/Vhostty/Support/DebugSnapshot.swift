@@ -1,4 +1,5 @@
 import AppKit
+import GhosttyC
 import UserNotifications
 
 /// Development aid: with VHOSTTY_DEBUG_SNAPSHOT=<dir>, periodically writes a PNG of
@@ -129,7 +130,7 @@ final class DebugSnapshot {
         guard let window, let view = window.contentView else { return }
 
         // Window server image (includes the Metal terminal layer).
-        if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+        if let cg = vhostty_window_image(CGWindowID(window.windowNumber)) {
             write(NSBitmapImageRep(cgImage: cg), "window.png")
         }
         // AppKit rendering (SwiftUI chrome only, no terminal pixels).
