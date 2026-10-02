@@ -343,7 +343,11 @@ final class AppStore: ObservableObject {
 
     private func launchIfNeeded(_ tab: TabSession) {
         guard tab.surface == nil, let project = project(tab.projectID) else { return }
-        let transcript = Transcript.locate(sessionID: tab.sessionID, projectPath: project.path)
+        let (sessionID, transcript) = Transcript.latest(sessionID: tab.sessionID, url: nil, projectPath: project.path)
+        if sessionID != tab.sessionID {
+            tab.sessionID = sessionID
+            scheduleSave()
+        }
         let workdir = FileManager.default.fileExists(atPath: project.path) ? project.path : NSHomeDirectory()
         let options = TerminalSurfaceView.Options(
             workingDirectory: workdir,
@@ -535,9 +539,9 @@ final class AppStore: ObservableObject {
         infoQueue.async { [weak self] in
             // The path reported by hooks can be stale: a session that entered a
             // worktree gets its transcript relocated to that worktree's directory.
-            let url = knownPath.map { URL(fileURLWithPath: $0) }
+            let known = knownPath.map { URL(fileURLWithPath: $0) }
                 .flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
-                ?? Transcript.locate(sessionID: sessionID, projectPath: project.path)
+            let (latestID, url) = Transcript.latest(sessionID: sessionID, url: known, projectPath: project.path)
             let info = url.flatMap { Transcript.read($0) }
             var cwd = hookCwd ?? info?.cwd ?? project.path
             // A resumed session that lives in a worktree reports the launch directory
@@ -557,6 +561,10 @@ final class AppStore: ObservableObject {
                 guard let self else { return }
                 self.refreshing.remove(tab.id)
                 guard self.tabs.contains(where: { $0 === tab }) else { return }
+                if latestID != sessionID, tab.sessionID == sessionID {
+                    tab.sessionID = latestID
+                    self.scheduleSave()
+                }
                 if let url { tab.transcriptPath = url.path }
                 tab.workDir = cwd
                 tab.transcript = info
