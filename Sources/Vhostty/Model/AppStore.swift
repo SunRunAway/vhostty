@@ -26,6 +26,8 @@ final class AppStore: ObservableObject {
     private var saveWork: DispatchWorkItem?
     private let infoQueue = DispatchQueue(label: "vhostty.info", qos: .utility)
     private var refreshing: Set<UUID> = []
+    /// The Claude process last seen running in each tab (see refreshLiveSessions).
+    private var livePIDs: [UUID: pid_t] = [:]
 
     var selectedTab: TabSession? { tabs.first { $0.id == selectedTabID } }
 
@@ -522,7 +524,40 @@ final class AppStore: ObservableObject {
     // MARK: - Branch / worktree / PR
 
     private func refreshAllInfo() {
+        refreshLiveSessions()
         for tab in tabs { refreshInfo(tab) }
+    }
+
+    /// Follows the session actually running in each tab. This covers a `claude`
+    /// typed into the tab's shell after the first one exited (`claude -r <id>`),
+    /// which sends no hooks.
+    private func refreshLiveSessions() {
+        infoQueue.async { [weak self] in
+            let live = LiveSessions.scan()
+            DispatchQueue.main.async {
+                guard let self else { return }
+                for tab in self.tabs where tab.isLaunched {
+                    let entry = live[tab.id]
+                    let lastPID = self.livePIDs[tab.id]
+                    self.livePIDs[tab.id] = entry?.pid
+                    guard let entry else {
+                        // Its Claude exited (a hooked one already said so with SessionEnd).
+                        if lastPID != nil { tab.status = .exited }
+                        continue
+                    }
+                    if entry.pid != lastPID, tab.status == .exited {
+                        tab.status = tab.titleBusy ? .working : .idle
+                    }
+                    guard entry.sessionID != tab.sessionID else { continue }
+                    tab.sessionID = entry.sessionID
+                    tab.transcriptPath = nil
+                    if let cwd = entry.cwd { tab.cwd = cwd }
+                    self.scheduleSave()
+                    self.refreshInfo(tab)
+                }
+                self.livePIDs = self.livePIDs.filter { id, _ in self.tabs.contains { $0.id == id } }
+            }
+        }
     }
 
     func refreshInfo(_ tab: TabSession) {
@@ -557,6 +592,11 @@ final class AppStore: ObservableObject {
                 guard let self else { return }
                 self.refreshing.remove(tab.id)
                 guard self.tabs.contains(where: { $0 === tab }) else { return }
+                // The card moved on to another session meanwhile: this is stale.
+                guard tab.sessionID == sessionID else {
+                    self.refreshInfo(tab)
+                    return
+                }
                 if let url { tab.transcriptPath = url.path }
                 tab.workDir = cwd
                 tab.transcript = info
