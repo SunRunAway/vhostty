@@ -51,7 +51,21 @@ Vhostty 是一个 macOS 原生终端，专门用来同时跑好几个 Claude Cod
 
 会话卡片和项目都可以右键，里面有更多操作。会话卡片还能拖动排序。
 
+## 安装
+
+适用于 Apple Silicon 的 Mac，macOS 14 及以上：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SunRunAway/vhostty/master/scripts/install.sh | bash
+```
+
+它会从 [Releases](https://github.com/SunRunAway/vhostty/releases) 下载最新版本装到 `/Applications`。以后再运行一次就是更新。
+
+App 没有经过 Apple 公证。如果你是用浏览器从 Releases 页面下载的 zip，macOS 会拒绝打开，需要到「系统设置 → 隐私与安全性」里点「仍要打开」，或者执行 `xattr -dr com.apple.quarantine /Applications/Vhostty.app`。
+
 ## 构建
+
+想自己从源码编译的话：
 
 只需要 Command Line Tools 和 zig，**不需要 Xcode**。
 

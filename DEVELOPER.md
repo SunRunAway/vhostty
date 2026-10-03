@@ -67,6 +67,16 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 
 按键和文字只会发给用 `to` / `toshell` 明确指定的会话。
 
+## 发布
+
+推一个 `v` 开头的标签，GitHub Actions（`.github/workflows/release.yml`）就会在 macOS arm64 机器上编译，把 `Vhostty.zip` 发到同名的 Release：
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+版本号取自标签，写进 `Info.plist` 的 `CFBundleShortVersionString`。libghostty 按 Ghostty 版本和补丁缓存，补丁不变时不会重新编译。在 Actions 页面手动运行这个 workflow 只编译、上传构建产物，不发 Release。用户通过 `scripts/install.sh` 安装最新的 Release。
+
 ## 文档
 
 README 有英文（`README.md`）和中文（`README.zh-CN.md`）两份，改功能、快捷键或构建步骤时两份要一起改。

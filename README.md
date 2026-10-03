@@ -53,7 +53,21 @@ The interface follows your system language (English or Simplified Chinese).
 
 Right-click a session card or a project for more actions. Session cards can also be dragged to reorder.
 
+## Installing
+
+Apple Silicon Macs, macOS 14 or later:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SunRunAway/vhostty/master/scripts/install.sh | bash
+```
+
+This downloads the latest build from [Releases](https://github.com/SunRunAway/vhostty/releases) into `/Applications`. Run it again to update.
+
+The app isn't notarized by Apple. If you download the zip from the Releases page in a browser instead, macOS will refuse to open it. Allow it under System Settings → Privacy & Security → "Open Anyway", or run `xattr -dr com.apple.quarantine /Applications/Vhostty.app`.
+
 ## Building
+
+To build from source instead:
 
 You only need the Command Line Tools and zig; **Xcode is not required**.
 
