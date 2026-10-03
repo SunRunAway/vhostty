@@ -12,7 +12,9 @@ The terminal engine is [Ghostty](https://ghostty.org) (libghostty), and it uses 
 
 > Vhostty = **V**ertical + G**hostty**: Ghostty's tabs, turned on their side and moved into a sidebar.
 
-> **Note:** the interface is currently in Chinese only.
+<p align="center"><img src="docs/screenshot.png" alt="Vhostty with two projects: session cards showing status, branch, worktree and PR"></p>
+
+The interface follows your system language (English or Simplified Chinese).
 
 ## Features
 
