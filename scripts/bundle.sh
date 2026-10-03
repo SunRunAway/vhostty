@@ -25,6 +25,10 @@ APP="$ROOT/build/Vhostty.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bin"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# Release builds stamp the version from the git tag (v1.2.3 -> 1.2.3).
+if [ -n "${VHOSTTY_VERSION:-}" ]; then
+  plutil -replace CFBundleShortVersionString -string "$VHOSTTY_VERSION" "$APP/Contents/Info.plist"
+fi
 cp "$BIN/Vhostty" "$APP/Contents/MacOS/Vhostty"
 cp "$BIN/vhostty-hook" "$APP/Contents/MacOS/vhostty-hook"
 cp Resources/ghostty-defaults.conf "$APP/Contents/Resources/"

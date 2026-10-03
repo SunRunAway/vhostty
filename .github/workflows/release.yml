@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Ghostty revision
+        id: ghostty
+        run: echo "sha=$(git rev-parse HEAD:vendor/ghostty)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache libghostty
+        id: ghostty-cache
+        uses: actions/cache@v4
+        with:
+          path: build/ghostty
+          key: libghostty-${{ runner.os }}-${{ runner.arch }}-${{ steps.ghostty.outputs.sha }}-${{ hashFiles('patches/**', 'scripts/build-ghostty.sh', 'scripts/make-zig-sdk.sh', 'scripts/zig-shim/**') }}
+
+      - name: Build libghostty
+        if: steps.ghostty-cache.outputs.cache-hit != 'true'
+        run: scripts/build-ghostty.sh
+
+      - name: Build Vhostty.app
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then export VHOSTTY_VERSION="${GITHUB_REF_NAME#v}"; fi
+          scripts/bundle.sh
+          ditto -c -k --keepParent build/Vhostty.app build/Vhostty.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vhostty
+          path: build/Vhostty.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/Vhostty.zip --title "$GITHUB_REF_NAME" --generate-notes
