@@ -52,8 +52,12 @@ enum GitProbe {
     private static var prCache: [String: (PRInfo?, Date)] = [:]
     private static let prTTL: TimeInterval = 120
 
+    static func isFeatureBranch(_ branch: String) -> Bool {
+        !["main", "master", "HEAD"].contains(branch) && !branch.hasPrefix("detached@")
+    }
+
     static func pullRequest(toplevel: String, branch: String) -> PRInfo? {
-        if ["main", "master", "HEAD"].contains(branch) || branch.hasPrefix("detached@") { return nil }
+        guard isFeatureBranch(branch) else { return nil }
         return view(branch, cwd: toplevel, key: "\(toplevel)|\(branch)")
     }
 

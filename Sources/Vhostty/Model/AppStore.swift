@@ -583,8 +583,14 @@ final class AppStore: ObservableObject {
                 cwd = wt.path
             }
             let git = GitProbe.probe(cwd) ?? (cwd != project.path ? GitProbe.probe(project.path) : nil)
-            let pr = git.flatMap { GitProbe.pullRequest(toplevel: $0.toplevel, branch: $0.branch) }
-                ?? info?.prNumber.flatMap { n in
+            // On a feature branch the card shows that branch's PR, or none yet. The
+            // transcript's pr-link is a PR the session opened earlier (maybe from
+            // another worktree), so it only stands in once the session is off its
+            // feature branches, e.g. back on master.
+            let featureBranch = git.flatMap { GitProbe.isFeatureBranch($0.branch) ? $0 : nil }
+            let linkedPR = featureBranch == nil ? info?.prNumber : nil
+            let pr = featureBranch.flatMap { GitProbe.pullRequest(toplevel: $0.toplevel, branch: $0.branch) }
+                ?? linkedPR.flatMap { n in
                     GitProbe.pullRequest(ref: info?.prURL ?? String(n), cwd: git?.toplevel ?? project.path)
                 }
 
@@ -624,7 +630,7 @@ final class AppStore: ObservableObject {
                     tab.prNumber = pr.number
                     tab.prURL = pr.url
                     tab.prState = pr.state
-                } else if let n = info?.prNumber {
+                } else if let n = linkedPR {
                     tab.prNumber = n
                     tab.prURL = info?.prURL
                     tab.prState = nil
