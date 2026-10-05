@@ -78,6 +78,10 @@
 "Rename…" = "重命名…";
 "Change Directory…" = "更改目录…";
 "Remove Project…" = "移除项目…";
+"Search Sessions" = "搜索会话";
+"Title or Session ID" = "标题或会话 ID";
+"Close Search" = "关闭搜索";
+"No Matching Sessions" = "没有匹配的会话";
 "Resume session: %@" = "恢复会话：%@";
 "now" = "刚刚";
 "%lldm" = "%lld分钟";

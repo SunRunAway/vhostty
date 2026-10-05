@@ -107,6 +107,16 @@ final class DebugSnapshot {
                 store.newSession()
                 continue
             }
+            if line == "search" || line.hasPrefix("search "), let project = store.currentProject ?? store.projects.first {
+                // search [text]: open the current project's session search with this query.
+                store.openSearch(project)
+                store.searchQuery[project.id] = String(line.dropFirst(7))
+                continue
+            }
+            if line == "endsearch", let project = store.currentProject ?? store.projects.first {
+                store.closeSearch(project)
+                continue
+            }
             guard let tab = target, let surface = targetShell ? tab.shellSurface : tab.surface else { continue }
             switch line {
             case "enter": surface.debugPress(keyCode: 0x24, chars: "\r")

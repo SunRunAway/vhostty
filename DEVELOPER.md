@@ -59,6 +59,7 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 | `notify` | 给指定会话发一条测试通知，授权状态写到 `notify.txt` |
 | `select <UUID>` | 切换到这个会话 |
 | `new` | 新建会话 |
+| `search [文字]` / `endsearch` | 打开当前项目的会话搜索并填入文字 / 关闭搜索 |
 | `toggleshell` | 开关当前会话的底部终端 |
 | `focus claude` / `focus shell` | 聚焦上面 / 下面的终端 |
 | `menukey <ctrl\|cmd> <字符>` | 把快捷键直接交给主菜单处理 |

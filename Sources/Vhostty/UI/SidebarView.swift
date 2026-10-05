@@ -57,9 +57,19 @@ private struct ProjectSection: View {
         VStack(alignment: .leading, spacing: 4) {
             ProjectRow(store: store, project: project)
             if project.expanded {
-                let open = store.tabs(of: project)
-                let closed = store.closedHistory(for: project)
-                let showAll = store.showAllHistory.contains(project.id)
+                let query = store.searchQuery[project.id]
+                let searching = !(query ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let open = store.tabs(of: project).filter {
+                    AppStore.matches(query ?? "", title: $0.title, sessionID: $0.sessionID)
+                }
+                let closed = store.closedHistory(for: project).filter {
+                    AppStore.matches(query ?? "", title: $0.title, sessionID: $0.id)
+                }
+                let showAll = searching || store.showAllHistory.contains(project.id)
+
+                if query != nil {
+                    SessionSearchField(store: store, project: project)
+                }
 
                 ForEach(open) { tab in
                     SessionCard(tab: tab, store: store, draggingID: $draggingID)
@@ -95,7 +105,13 @@ private struct ProjectSection: View {
                         }
                     }
                 }
-                if open.isEmpty && closed.isEmpty {
+                if searching && open.isEmpty && closed.isEmpty {
+                    Text("No Matching Sessions")
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 16)
+                        .padding(.vertical, 5)
+                } else if query == nil && open.isEmpty && closed.isEmpty {
                     Button { store.newSession(in: project) } label: {
                         Label("New Session", systemImage: "plus")
                             .font(.system(size: 12.5))
@@ -140,6 +156,9 @@ private struct ProjectRow: View {
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .foregroundStyle(.secondary)
+                IconButton(systemName: "magnifyingglass", help: "Search Sessions") {
+                    store.openSearch(project)
+                }
                 IconButton(systemName: "square.and.pencil", help: "New Claude Session") {
                     store.newSession(in: project)
                 }
@@ -159,6 +178,7 @@ private struct ProjectRow: View {
     @ViewBuilder
     private var projectMenu: some View {
         Button("New Claude Session") { store.newSession(in: project) }
+        Button("Search Sessions") { store.openSearch(project) }
         Divider()
         Button("Show in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: project.path)])
@@ -172,6 +192,42 @@ private struct ProjectRow: View {
         Button("Change Directory…") { store.changeProjectDirectory(project) }
         Divider()
         Button("Remove Project…") { store.removeProject(project) }
+    }
+}
+
+/// Filters a project's sessions by title or session id. Esc or ✕ closes it.
+private struct SessionSearchField: View {
+    @ObservedObject var store: AppStore
+    let project: Project
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+            TextField("Title or Session ID", text: Binding(
+                get: { store.searchQuery[project.id] ?? "" },
+                set: { store.searchQuery[project.id] = $0 }
+            ))
+            .textFieldStyle(.plain)
+            .font(.system(size: 12.5))
+            .focused($focused)
+            .onExitCommand { store.closeSearch(project) }
+            Button { store.closeSearch(project) } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Close Search")
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 26)
+        .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.07)))
+        .padding(.leading, 6)
+        .onAppear { focused = true }
     }
 }
 

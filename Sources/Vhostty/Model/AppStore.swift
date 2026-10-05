@@ -12,6 +12,10 @@ final class AppStore: ObservableObject {
     @Published private(set) var selectedTabID: UUID?
     @Published var history: [UUID: [SessionSummary]] = [:]
     @Published var showAllHistory: Set<UUID> = []
+    /// Per-project session search: present while the search field is open.
+    @Published var searchQuery: [UUID: String] = [:]
+    /// Every past session of a project being searched (history above is capped).
+    @Published var searchHistory: [UUID: [SessionSummary]] = [:]
     @Published var sidebarVisible = true
     @Published var sidebarWidth: CGFloat = 300
     /// Height fraction of the bottom shell panel (shared by all sessions).
@@ -655,7 +659,34 @@ final class AppStore: ObservableObject {
     /// History sessions that aren't currently open in a tab.
     func closedHistory(for project: Project) -> [SessionSummary] {
         let open = Set(tabs.map(\.sessionID))
-        return (history[project.id] ?? []).filter { !open.contains($0.id) }
+        return (searchHistory[project.id] ?? history[project.id] ?? []).filter { !open.contains($0.id) }
+    }
+
+    // MARK: - Search
+
+    func openSearch(_ project: Project) {
+        updateProject(project.id) { $0.expanded = true }
+        if searchQuery[project.id] == nil { searchQuery[project.id] = "" }
+        let id = project.id, path = project.path
+        infoQueue.async { [weak self] in
+            let all = Transcript.history(projectPath: path, limit: .max)
+            DispatchQueue.main.async {
+                guard let self, self.searchQuery[id] != nil else { return }
+                self.searchHistory[id] = all
+            }
+        }
+    }
+
+    func closeSearch(_ project: Project) {
+        searchQuery.removeValue(forKey: project.id)
+        searchHistory.removeValue(forKey: project.id)
+    }
+
+    /// Matches a session by title or session id, case-insensitively.
+    static func matches(_ query: String, title: String, sessionID: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return true }
+        return title.localizedCaseInsensitiveContains(q) || sessionID.localizedCaseInsensitiveContains(q)
     }
 
     // MARK: - Attention
