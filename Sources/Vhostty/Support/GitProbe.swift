@@ -38,6 +38,16 @@ enum GitProbe {
         return GitInfo(branch: branch, toplevel: toplevel, linkedWorktree: linked)
     }
 
+    /// Paths of every worktree of the repository containing `path` (`git worktree list`).
+    static func worktrees(_ path: String) -> [String] {
+        guard FileManager.default.fileExists(atPath: path),
+              let r = Proc.run("/usr/bin/git", ["-C", path, "worktree", "list", "--porcelain"], timeout: 5),
+              r.status == 0 else { return [] }
+        return r.stdout.split(separator: "\n").compactMap { line in
+            line.hasPrefix("worktree ") ? String(line.dropFirst("worktree ".count)) : nil
+        }
+    }
+
     private static func realpath(_ path: String) -> String {
         (path as NSString).standardizingPath.withCString { cpath in
             guard let resolved = Darwin.realpath(cpath, nil) else { return (path as NSString).standardizingPath }

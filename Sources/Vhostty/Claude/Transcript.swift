@@ -140,15 +140,15 @@ enum Transcript {
         return nil
     }
 
-    /// Transcript directories for a project: its own, plus those of its Claude Code
-    /// worktrees (<project>/.claude/worktrees/*), where a session's transcript moves
-    /// once it enters a worktree.
+    /// Transcript directories for a project: its own, plus those of every worktree
+    /// of its repository (`git worktree list`, like Ctrl+W in Claude Code's /resume).
+    /// A session's transcript moves to a worktree's directory once it enters it.
     static func transcriptDirs(projectPath: String) -> [URL] {
-        let own = encode(projectPath)
-        let worktreePrefix = encode(projectPath + "/.claude/worktrees/")
-        let dirs = (try? FileManager.default.contentsOfDirectory(atPath: projectsDir.path)) ?? []
-        return dirs.filter { $0 == own || $0.hasPrefix(worktreePrefix) }
-            .map { projectsDir.appendingPathComponent($0) }
+        var names = [encode(projectPath)]
+        for path in GitProbe.worktrees(projectPath) where !names.contains(encode(path)) {
+            names.append(encode(path))
+        }
+        return names.map { projectsDir.appendingPathComponent($0) }
     }
 
     /// Recent sessions for a project directory, newest first.
