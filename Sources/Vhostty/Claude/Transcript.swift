@@ -140,13 +140,25 @@ enum Transcript {
         return nil
     }
 
+    /// Transcript directories for a project: its own, plus those of its Claude Code
+    /// worktrees (<project>/.claude/worktrees/*), where a session's transcript moves
+    /// once it enters a worktree.
+    static func transcriptDirs(projectPath: String) -> [URL] {
+        let own = encode(projectPath)
+        let worktreePrefix = encode(projectPath + "/.claude/worktrees/")
+        let dirs = (try? FileManager.default.contentsOfDirectory(atPath: projectsDir.path)) ?? []
+        return dirs.filter { $0 == own || $0.hasPrefix(worktreePrefix) }
+            .map { projectsDir.appendingPathComponent($0) }
+    }
+
     /// Recent sessions for a project directory, newest first.
     static func history(projectPath: String, limit: Int = 40) -> [SessionSummary] {
-        let dir = projectsDir.appendingPathComponent(encode(projectPath))
         let fm = FileManager.default
-        guard let files = try? fm.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]
-        ) else { return [] }
+        let files = transcriptDirs(projectPath: projectPath).flatMap { dir in
+            (try? fm.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]
+            )) ?? []
+        }
 
         let dated: [(URL, Date)] = files.compactMap { url in
             guard url.pathExtension == "jsonl" else { return nil }
