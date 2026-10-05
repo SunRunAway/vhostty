@@ -157,7 +157,7 @@ private struct ProjectRow: View {
                 .fixedSize()
                 .foregroundStyle(.secondary)
                 IconButton(systemName: "magnifyingglass", help: "Search Sessions") {
-                    store.openSearch(project)
+                    if store.searchQuery[project.id] != nil { store.closeSearch(project) } else { store.openSearch(project) }
                 }
                 IconButton(systemName: "square.and.pencil", help: "New Claude Session") {
                     store.newSession(in: project)
