@@ -1,6 +1,16 @@
 #!/bin/sh
 # Started by Vhostty in each tab: runs Claude Code with Vhostty's extra hook
 # settings (merged with your own ~/.claude settings, which stay untouched).
+# A session still running in the background (←) can't be resumed; open it with
+# `claude attach` instead. Its job lives in ~/.claude/jobs/<first 8 of the id>.
+if [ "$1" = "--resume" ] && [ -n "$2" ]; then
+  job=$(printf '%s' "$2" | cut -c1-8)
+  file="$HOME/.claude/jobs/$job/state.json"
+  if [ -f "$file" ] && grep -q "^  \"sessionId\": \"$2\"" "$file" &&
+     ! grep -q '^  "state": "\(done\|stopped\)"' "$file"; then
+    exec claude attach "$job"
+  fi
+fi
 if [ -n "$VHOSTTY_CLAUDE_SETTINGS" ] && [ -f "$VHOSTTY_CLAUDE_SETTINGS" ]; then
   exec claude --settings "$VHOSTTY_CLAUDE_SETTINGS" "$@"
 fi
