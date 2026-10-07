@@ -1,5 +1,5 @@
 diff --git a/build.zig b/build.zig
-index f9d861b..5a8ed58 100644
+index f9d861b..54311c9 100644
 --- a/build.zig
 +++ b/build.zig
 @@ -145,6 +145,13 @@ pub fn build(b: *std.Build) !void {
@@ -16,8 +16,32 @@ index f9d861b..5a8ed58 100644
      // macOS only artifacts. These will error if they're initialized for
      // other targets.
      if (config.target.result.os.tag.isDarwin()) {
+diff --git a/src/apprt/embedded.zig b/src/apprt/embedded.zig
+index 0d5a4f8..2f3a911 100644
+--- a/src/apprt/embedded.zig
++++ b/src/apprt/embedded.zig
+@@ -438,9 +438,8 @@ pub const Surface = struct {
+         /// The working directory to load into.
+         working_directory: ?[*:0]const u8 = null,
+ 
+-        /// The command to run in the new surface. If this is set then
+-        /// the "wait-after-command" option is also automatically set to true,
+-        /// since this is used for scripting.
++        /// The command to run in the new surface. Vhostty: this no longer
++        /// forces "wait-after-command"; use `wait_after_command` for that.
+         ///
+         /// This command always run in a shell (e.g. via `/bin/sh -c`),
+         /// despite Ghostty allowing directly executed commands via config.
+@@ -530,7 +529,6 @@ pub const Surface = struct {
+             const cmd = std.mem.sliceTo(c_command, 0);
+             if (cmd.len > 0) {
+                 config.command = .{ .shell = cmd };
+-                config.@"wait-after-command" = true;
+             }
+         }
+ 
 diff --git a/src/build/LibtoolStep.zig b/src/build/LibtoolStep.zig
-index d2b5149..fceaf3a 100644
+index d2b5149..9c57a79 100644
 --- a/src/build/LibtoolStep.zig
 +++ b/src/build/LibtoolStep.zig
 @@ -31,7 +31,27 @@ pub fn create(b: *std.Build, opts: Options) *LibtoolStep {
@@ -50,7 +74,7 @@ index d2b5149..fceaf3a 100644
      for (opts.sources) |source| run_step.addFileArg(source);
  
 diff --git a/src/build/SharedDeps.zig b/src/build/SharedDeps.zig
-index 9276c99..81c547b 100644
+index 9276c99..bb3bd48 100644
 --- a/src/build/SharedDeps.zig
 +++ b/src/build/SharedDeps.zig
 @@ -380,10 +380,10 @@ pub fn add(
@@ -68,7 +92,7 @@ index 9276c99..81c547b 100644
      }
  
 diff --git a/src/renderer/metal/shaders.zig b/src/renderer/metal/shaders.zig
-index 0be0235..43e5aaa 100644
+index 0be0235..408e021 100644
 --- a/src/renderer/metal/shaders.zig
 +++ b/src/renderer/metal/shaders.zig
 @@ -334,23 +334,25 @@ pub const BgImage = extern struct {
