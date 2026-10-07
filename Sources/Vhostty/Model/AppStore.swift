@@ -455,9 +455,9 @@ final class AppStore: ObservableObject {
     /// it also covers turns that end without a Stop hook (Esc). "✳" also shows
     /// while Claude waits for an answer or a permission, so needing you comes
     /// from the Notification hook.
-    /// Codex's title (as set by ClaudeLauncher) is "<spinner> <thread title>", with
-    /// the spinner (braille dots) only while it works; the thread title is the
-    /// thread's id until the thread has one.
+    /// Codex's title (as set by ClaudeLauncher) is "<spinner> <thread title> | <id>…",
+    /// with the spinner (braille dots) only while it works. The id is cut to its
+    /// first 29 characters; the thread title is the full id until the thread has one.
     private func terminalTitleChanged(_ tab: TabSession, _ raw: String) {
         var title = raw.trimmingCharacters(in: .whitespaces)
         var glyph: Character?
@@ -494,20 +494,21 @@ final class AppStore: ObservableObject {
         }
 
         if tab.kind == .codex {
-            // Codex appends a spinner while it's naming the thread.
-            if let last = title.last, !last.isLetter, !last.isNumber, title.dropLast().hasSuffix(" ") {
-                title = String(title.dropLast()).trimmingCharacters(in: .whitespaces)
-            }
-            if title.count == 36, UUID(uuidString: title) != nil {
+            var parts = title.components(separatedBy: " | ").map(Self.dropNamingSpinner)
+            var thread = parts.count > 1 ? Self.codexThreadID(parts.removeLast()) : nil
+            let name = parts.joined(separator: " | ")
+            if name.count == 36, UUID(uuidString: name) != nil {
+                // Not named yet: the title is the full id.
+                thread = name.lowercased()
                 tab.terminalTitle = nil
-                if tab.codexThreadID != title.lowercased() {
-                    tab.codexThreadID = title.lowercased()
-                    confirmCodexThreads()
-                }
             } else {
                 // Once Codex quits, the title is the shell's.
-                let named = title.contains { $0.isLetter || $0.isNumber }
-                tab.terminalTitle = named && tab.status != .exited ? title : nil
+                let named = name.contains { $0.isLetter || $0.isNumber }
+                tab.terminalTitle = named && tab.status != .exited ? name : nil
+            }
+            if let thread, tab.codexThreadID != thread, !(tab.codexThreadID ?? "").hasPrefix(thread) {
+                tab.codexThreadID = thread
+                confirmCodexThreads()
             }
         } else {
             let generic = ["claude", "claude code", ""].contains(title.lowercased())
@@ -515,6 +516,20 @@ final class AppStore: ObservableObject {
             tab.terminalTitle = generic ? nil : title
         }
         updateTitle(tab)
+    }
+
+    /// Codex appends a spinner to the thread title and id while it's naming the thread.
+    private static func dropNamingSpinner(_ part: String) -> String {
+        guard let last = part.last, !last.isLetter, !last.isNumber, last != ".", part.dropLast().hasSuffix(" ")
+        else { return part }
+        return String(part.dropLast()).trimmingCharacters(in: .whitespaces)
+    }
+
+    /// A thread id from Codex's title, whole or cut short ("01a1177c-18a5-…-2d259...").
+    private static func codexThreadID(_ part: String) -> String? {
+        let id = part.hasSuffix("...") ? String(part.dropLast(3)) : part
+        guard id.count >= 20, id.count <= 36, id.allSatisfy({ $0.isHexDigit || $0 == "-" }) else { return nil }
+        return id.lowercased()
     }
 
     /// Claude Code's "waiting for your input" reminder, sent 60s after a turn ends
@@ -596,15 +611,15 @@ final class AppStore: ObservableObject {
     /// has saved it (on its first message); before that it can't be resumed.
     private func confirmCodexThreads() {
         let pending: [(TabSession, String)] = tabs.compactMap { tab in
-            guard tab.kind == .codex, let id = tab.codexThreadID, id != tab.sessionID else { return nil }
-            return (tab, id)
+            guard tab.kind == .codex, let ref = tab.codexThreadID, !tab.sessionID.hasPrefix(ref) else { return nil }
+            return (tab, ref)
         }
         guard !pending.isEmpty else { return }
         infoQueue.async { [weak self] in
-            let saved = pending.filter { CodexThreads.thread(id: $0.1) != nil }
+            let saved = pending.compactMap { tab, ref in CodexThreads.thread(idPrefix: ref).map { (tab, ref, $0.id) } }
             DispatchQueue.main.async {
                 guard let self else { return }
-                for (tab, id) in saved where tab.codexThreadID == id && tab.sessionID != id {
+                for (tab, ref, id) in saved where tab.codexThreadID == ref && tab.sessionID != id {
                     tab.sessionID = id
                     self.scheduleSave()
                     self.refreshInfo(tab)

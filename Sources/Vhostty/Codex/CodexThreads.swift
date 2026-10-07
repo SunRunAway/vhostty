@@ -46,6 +46,14 @@ enum CodexThreads {
         return query("SELECT \(columns) FROM threads WHERE id = ?", [id]).first
     }
 
+    /// The one saved thread whose id starts with `prefix` (hex digits and dashes),
+    /// nil if there's none or more than one.
+    static func thread(idPrefix prefix: String) -> Thread? {
+        guard !prefix.isEmpty, prefix.allSatisfy({ $0.isHexDigit || $0 == "-" }) else { return nil }
+        let rows = query("SELECT \(columns) FROM threads WHERE id LIKE ? LIMIT 2", [prefix + "%"])
+        return rows.count == 1 ? rows[0] : nil
+    }
+
     /// Recent sessions started in a project or any worktree of its repository, newest first.
     static func history(projectPath: String, limit: Int = 40) -> [SessionSummary] {
         let dirs = directories(projectPath)

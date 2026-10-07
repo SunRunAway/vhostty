@@ -20,8 +20,8 @@ $SHELL -l -i -c 'vhostty-claude --session-id <uuid>; exec $SHELL -l'
 
 Codex 每张卡片跑的是 `vhostty-codex -c tui.terminal_title=…`（新建）或 `vhostty-codex resume -c tui.terminal_title=… <id>`（恢复），它只是调用 `codex`，退出后通过 `vhostty-hook` 告诉 App。和 Claude 的不同：
 
-- Codex 不能预先指定会话 ID，而且 TUI 只是共享后台服务（daemon）的客户端，进程上看不出它在跑哪个会话。所以 Vhostty 用 `-c` 把卡片里 Codex 的终端标题设成 `["activity","thread-title"]`：会话还没有标题时，`thread-title` 显示的就是完整的会话 ID（Codex 一启动就有）。卡片从自己的终端标题里读到 ID。（`thread-id` 这一项会被截到 32 个字符，不能用。）
-- Codex 在发出第一条消息时才保存会话，没保存的会话不能 `codex resume`。所以读到的 ID 先记在 `codexThreadID`，等它出现在 Codex 的会话索引 `~/.codex/state_<n>.sqlite` 的 `threads` 表里，才成为卡片的会话 ID。在 Codex 里 `/new` 开了新会话，标题里会出现新的 ID，卡片也跟着换。
+- Codex 不能预先指定会话 ID，而且 TUI 只是共享后台服务（daemon）的客户端，进程上看不出它在跑哪个会话。所以 Vhostty 用 `-c` 把卡片里 Codex 的终端标题设成 `["activity","thread-title","thread-id"]`，卡片从自己的终端标题里读 ID：`thread-id` 被截成前 29 个字符加 `...`，一直都在；会话还没起名时，`thread-title` 显示完整 ID。
+- Codex 在发出第一条消息时才保存会话，没保存的会话不能 `codex resume`。所以读到的 ID（或前缀）先记在 `codexThreadID`，等 Codex 的会话索引 `~/.codex/state_<n>.sqlite` 的 `threads` 表里有且只有一个会话以它开头，才把那个会话的完整 ID 作为卡片的会话 ID。在 Codex 里用 `/new`、`/resume` 换了会话，标题里的 ID 变了，卡片也跟着换。
 - 不注入 Codex hooks（Codex 的 hooks 要用户手动信任，而且在 daemon 里运行，拿不到卡片的环境变量）。状态来自终端标题：有转圈就是工作中。启动和恢复时 Codex 也会转一会儿，这一段不算一轮工作。
 - 历史会话、标题、分支也来自 `threads` 表（只列用户自己发起的会话，不含子代理、自动化和已归档的）。
 - Codex 的数据目录是 `CODEX_HOME`（默认 `~/.codex`）。卡片里的 Codex 由交互式登录 shell 启动，所以 Vhostty 启动时也用 `$SHELL -l -i -c` 读这个变量。

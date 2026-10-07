@@ -78,8 +78,9 @@ final class TabSession: ObservableObject, Identifiable {
     var titleBusy = false
     var transcript: TranscriptInfo?
     var hooksActive = false
-    /// The thread Codex shows in its terminal title. Codex only saves a thread once
-    /// its first message is sent, so this becomes sessionID once it's saved.
+    /// The thread Codex shows in its terminal title: its id, or the first part of
+    /// it. Codex only saves a thread once its first message is sent; once it's saved,
+    /// its full id becomes sessionID.
     var codexThreadID: String?
     var surface: TerminalSurfaceView?
 

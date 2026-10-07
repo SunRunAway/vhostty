@@ -28,15 +28,15 @@ enum ClaudeLauncher {
     /// The shell command for a new tab: an interactive login shell (so the user's
     /// PATH and rc files apply) that runs the agent, then stays open as a normal shell.
     /// Claude gets the session id up front. Codex can't, so its terminal title is set
-    /// to its activity spinner plus the thread title, which is the thread's id until
-    /// the thread has a title (AppStore.terminalTitleChanged reads it from there).
+    /// to its activity spinner, the thread title and the thread id (cut to its first
+    /// 29 characters), and AppStore.terminalTitleChanged reads the id from there.
     static func command(kind: AgentKind, sessionID: String, resume: Bool) -> String {
         let shell = ShellQuote.quote(ShellEnvironment.shell)
         let args: String
         switch kind {
         case .claude: args = "\(resume ? "--resume" : "--session-id") \(sessionID)"
         case .codex:
-            let title = "-c " + ShellQuote.quote(#"tui.terminal_title=["activity","thread-title"]"#)
+            let title = "-c " + ShellQuote.quote(#"tui.terminal_title=["activity","thread-title","thread-id"]"#)
             args = resume ? "resume \(title) \(ShellQuote.quote(sessionID))" : title
         }
         let inner = "\(ShellQuote.quote(launcherPath(kind))) \(args); exec \(shell) -l"
