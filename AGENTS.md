@@ -32,13 +32,17 @@
 - No renaming of session titles from the sidebar. The claude CLI can only name
   a session at launch (`--name`) or by typing `/rename` inside it, and typing
   into the terminal is fragile. If it can't be done cleanly, don't do it.
-- After `/clear` inside a background job, Claude Code writes the job's old name
-  as the new transcript's first `ai-title`, so the card keeps the old title.
-  Leave it; don't override Claude Code's naming.
-- Don't follow `continued-in` records for sessions sent to the background; that
-  handling was removed on purpose in 814ac47. A `claude -r` typed into a tab is
-  tracked through `~/.claude/sessions` (`LiveSessions`). Before re-adding any
-  mechanism, check `git log -S` for whether it was removed on purpose.
+- Claude Code only: a Claude session can be sent to the background (a job you
+  reattach with `claude attach`). Running `/clear` in such a job starts a new
+  session with a new id, but Claude Code writes the job's old name as the first
+  `ai-title` of the new transcript. Vhostty takes card titles from `ai-title`,
+  so the card keeps the old title instead of looking like a new session. This
+  is expected: leave it, and don't override Claude Code's naming.
+- Claude Code only: don't follow the `continued-in` records Claude Code writes
+  for sessions sent to the background; that handling was removed on purpose in
+  814ac47. A `claude -r` typed into a tab is tracked through
+  `~/.claude/sessions` (`LiveSessions`). Before re-adding any mechanism, check
+  `git log -S` for whether it was removed on purpose.
 - The default session kind (Claude / Codex) is a per-project setting, not a
   global one.
 - After ⌘Q the Dock can keep showing Vhostty as running in the background while
