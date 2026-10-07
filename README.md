@@ -25,7 +25,7 @@ The interface follows your system language (English or Simplified Chinese).
   3. The worktree name, or 「主工作区」 (main worktree) when not in a worktree
   4. The PR number, e.g. `#123`, colored by state: open green / merged purple / closed red. Click it to open the PR in your browser
 - **New session**: `cd`s into the project directory and starts `claude`. When claude exits, the terminal stays in your shell.
-- **Codex too**: a project's ⋯ menu can also start a Codex session (`codex`), and "Set Default Session" picks which one ⌘T and the ✎ button start. Each card and history entry shows a Claude or Codex icon. A new Codex session is matched to its card once you send its first message; Codex cards get their title and working / idle status from Codex's terminal title. Claude-only features (the ✋ permission state, hooks) don't apply to Codex.
+- **Codex too**: a project's ⋯ menu can also start a Codex session (`codex`), and "Set Default Session" picks, per project, which one ⌘T and the ✎ button start there. Each card and history entry shows a Claude or Codex icon. A new Codex session is matched to its card once you send its first message; Codex cards get their title and working / idle status from Codex's terminal title. Claude-only features (the ✋ permission state, hooks) don't apply to Codex.
 - **Live status**:
   - Spinner = Claude is working
   - ✋ = waiting for you to approve a permission
@@ -42,7 +42,7 @@ The interface follows your system language (English or Simplified Chinese).
 
 | Shortcut | Action |
 |---|---|
-| ⌘T | New session (of the default kind) in the current project |
+| ⌘T | New session in the current project (of that project's default kind) |
 | ⇧⌘O | Add project |
 | ⌘W | Close the current session (asks first if Claude is still running) |
 | ⌘1…9 | Switch to the Nth session |

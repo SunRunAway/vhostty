@@ -6,6 +6,8 @@ struct Project: Codable, Identifiable, Hashable {
     var name: String
     var path: String
     var expanded = true
+    /// What ⌘T and the new-session button start here (Claude when unset).
+    var defaultKind: AgentKind?
 
     var color: Color { ProjectPalette.color(for: id) }
 }
@@ -141,5 +143,4 @@ struct PersistedState: Codable {
     var sidebarWidth: Double?
     var sidebarVisible: Bool?
     var shellFraction: Double?
-    var defaultKind: AgentKind?
 }

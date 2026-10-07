@@ -159,7 +159,7 @@ private struct ProjectRow: View {
                 IconButton(systemName: "magnifyingglass", help: "Search Sessions") {
                     if store.searchQuery[project.id] != nil { store.closeSearch(project) } else { store.openSearch(project) }
                 }
-                IconButton(systemName: "square.and.pencil", help: store.defaultKind.newSessionTitle) {
+                IconButton(systemName: "square.and.pencil", help: (project.defaultKind ?? .claude).newSessionTitle) {
                     store.newSession(in: project)
                 }
             }
@@ -177,15 +177,15 @@ private struct ProjectRow: View {
 
     @ViewBuilder
     private var projectMenu: some View {
-        ForEach(store.kindsDefaultFirst) { kind in
+        ForEach(store.kindsDefaultFirst(project)) { kind in
             Button(kind.newSessionTitle) { store.newSession(in: project, kind: kind) }
         }
         Button("Search Sessions") { store.openSearch(project) }
         Menu("Set Default Session") {
             ForEach(AgentKind.allCases) { kind in
                 Toggle(kind.name, isOn: Binding(
-                    get: { store.defaultKind == kind },
-                    set: { if $0 { store.setDefaultKind(kind) } }))
+                    get: { (project.defaultKind ?? .claude) == kind },
+                    set: { if $0 { store.setDefaultKind(kind, for: project) } }))
             }
         }
         Divider()

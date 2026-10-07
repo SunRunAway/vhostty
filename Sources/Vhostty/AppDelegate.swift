@@ -1,18 +1,16 @@
 import AppKit
-import Combine
 import SwiftUI
 import UserNotifications
 import GhosttyC
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, GhosttyRuntimeDelegate,
-    UNUserNotificationCenterDelegate {
+    UNUserNotificationCenterDelegate, NSMenuDelegate {
     let store = AppStore.shared
     var window: NSWindow!
     private var hookServer: HookServer?
     private var debugSnapshot: DebugSnapshot?
     private var fileMenu: NSMenu?
-    private var newSessionItems: [AgentKind: NSMenuItem] = [:]
-    private var defaultKindWatch: AnyCancellable?
+    private var newSessionItems: [NSMenuItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DispatchQueue.global(qos: .userInitiated).async { ShellEnvironment.load() }
@@ -130,15 +128,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
 
         let file = NSMenu()
         newSessionItems = [
-            .claude: item("New Claude Session", #selector(newSessionOfKind(_:)), ""),
-            .codex: item("New Codex Session", #selector(newSessionOfKind(_:)), ""),
+            item("New Claude Session", #selector(newSession), "t"),
+            item("New Codex Session", #selector(newOtherSession), ""),
         ]
+        newSessionItems.forEach(file.addItem)
         file.addItem(item("Add Project…", #selector(addProject), "o", [.command, .shift]))
         file.addItem(.separator())
         file.addItem(item("Close Session", #selector(closeTab), "w"))
         addSubmenu(main, "File", file)
         fileMenu = file
-        defaultKindWatch = store.$defaultKind.sink { [weak self] kind in self?.orderNewSessionItems(default: kind) }
+        file.delegate = self
 
         let edit = NSMenu()
         edit.addItem(withTitle: String(localized: "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
@@ -203,22 +202,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         main.addItem(holder)
     }
 
-    /// The default kind's "New … Session" comes first and gets ⌘T.
-    private func orderNewSessionItems(default kind: AgentKind) {
-        guard let fileMenu else { return }
-        let order = [kind] + AgentKind.allCases.filter { $0 != kind }
-        for (i, k) in order.enumerated() {
-            guard let it = newSessionItems[k] else { continue }
-            if it.menu != nil { fileMenu.removeItem(it) }
-            it.keyEquivalent = k == kind ? "t" : ""
-            it.keyEquivalentModifierMask = [.command]
-            fileMenu.insertItem(it, at: i)
+    @objc private func newSession() { store.newSession() }
+    @objc private func newOtherSession() {
+        guard let p = store.currentProject else { return store.newSession() }
+        store.newSession(in: p, kind: store.kindsDefaultFirst(p)[1])
+    }
+
+    /// The File menu's first "New … Session" (⌘T) is the current project's default kind.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === fileMenu else { return }
+        let kinds = store.currentProject.map(store.kindsDefaultFirst) ?? AgentKind.allCases
+        for (item, kind) in zip(newSessionItems, kinds) {
+            item.title = String(localized: kind == .claude ? "New Claude Session" : "New Codex Session")
         }
     }
 
-    @objc private func newSessionOfKind(_ sender: NSMenuItem) {
-        store.newSession(kind: newSessionItems.first { $0.value === sender }?.key)
-    }
     @objc private func addProject() { store.addProjectViaPanel() }
     @objc private func closeTab() { store.closeSelected() }
     @objc private func nextTab() { store.gotoTab(.next) }

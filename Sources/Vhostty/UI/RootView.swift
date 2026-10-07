@@ -94,7 +94,7 @@ struct EmptyStateView: View {
                 .font(.system(size: 26, weight: .semibold, design: .rounded))
             Text(store.projects.isEmpty
                  ? "Add a project directory, then summon Claude in it."
-                 : "Choose a project to start a new \(store.defaultKind.name) session." as LocalizedStringKey)
+                 : "Choose a project to start a new session." as LocalizedStringKey)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 

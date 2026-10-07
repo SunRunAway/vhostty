@@ -21,8 +21,6 @@ final class AppStore: ObservableObject {
     /// Height fraction of the bottom shell panel (shared by all sessions).
     @Published var shellFraction: CGFloat = 0.35
     @Published var terminalBackground = Color(red: 0.16, green: 0.17, blue: 0.20)
-    /// What ⌘T and the sidebar's new-session button start.
-    @Published private(set) var defaultKind: AgentKind = .claude
 
     /// Set by the AppKit host so the store can move keyboard focus into terminals.
     weak var terminalContainer: TerminalContainerView?
@@ -58,7 +56,6 @@ final class AppStore: ObservableObject {
             if let w = state.sidebarWidth { sidebarWidth = CGFloat(w) }
             if let v = state.sidebarVisible { sidebarVisible = v }
             if let f = state.shellFraction { shellFraction = CGFloat(f) }
-            if let k = state.defaultKind { defaultKind = k }
         }
         if selectedTabID != nil, selectedTab == nil { selectedTabID = tabs.first?.id }
 
@@ -84,8 +81,7 @@ final class AppStore: ObservableObject {
             selectedTabID: selectedTabID,
             sidebarWidth: Double(sidebarWidth),
             sidebarVisible: sidebarVisible,
-            shellFraction: Double(shellFraction),
-            defaultKind: defaultKind)
+            shellFraction: Double(shellFraction))
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: AppPaths.state, options: .atomic)
         }
@@ -186,7 +182,7 @@ final class AppStore: ObservableObject {
             addProjectViaPanel()
             return
         }
-        let kind = kind ?? defaultKind
+        let kind = kind ?? project.defaultKind ?? .claude
         // Codex can't be given a session id; it gets one once its thread shows up.
         let sessionID = kind == .claude ? UUID().uuidString.lowercased() : ""
         let tab = TabSession(projectID: project.id, kind: kind, sessionID: sessionID, cwd: project.path)
@@ -194,14 +190,14 @@ final class AppStore: ObservableObject {
         select(tab)
     }
 
-    /// Both kinds, the default first (the order of the "New … Session" menu items).
-    var kindsDefaultFirst: [AgentKind] {
-        [defaultKind] + AgentKind.allCases.filter { $0 != defaultKind }
+    /// Both kinds, the project's default first (the order of its "New … Session" menu items).
+    func kindsDefaultFirst(_ project: Project) -> [AgentKind] {
+        let first = project.defaultKind ?? .claude
+        return [first] + AgentKind.allCases.filter { $0 != first }
     }
 
-    func setDefaultKind(_ kind: AgentKind) {
-        defaultKind = kind
-        scheduleSave()
+    func setDefaultKind(_ kind: AgentKind, for project: Project) {
+        updateProject(project.id) { $0.defaultKind = kind }
     }
 
     func resumeSession(_ summary: SessionSummary, in project: Project) {
