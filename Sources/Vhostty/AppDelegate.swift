@@ -13,7 +13,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
     private var newSessionItems: [NSMenuItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        DispatchQueue.global(qos: .userInitiated).async { ShellEnvironment.load() }
+        DispatchQueue.global(qos: .userInitiated).async {
+            ShellEnvironment.load()
+            ShellEnvironment.loadCodexHome()
+            // Codex's history depends on the shell's CODEX_HOME.
+            DispatchQueue.main.async { AppStore.shared.refreshHistory() }
+        }
 
         guard GhosttyRuntime.shared.start() else {
             let alert = NSAlert()

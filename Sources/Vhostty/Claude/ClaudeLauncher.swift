@@ -27,14 +27,17 @@ enum ClaudeLauncher {
 
     /// The shell command for a new tab: an interactive login shell (so the user's
     /// PATH and rc files apply) that runs the agent, then stays open as a normal shell.
-    /// Claude gets the session id up front; Codex can't, so a new Codex session
-    /// starts without one and is found later (AppStore.discoverCodexThreads).
+    /// Claude gets the session id up front. Codex can't, so its terminal title is set
+    /// to its activity spinner plus the thread title, which is the thread's id until
+    /// the thread has a title (AppStore.terminalTitleChanged reads it from there).
     static func command(kind: AgentKind, sessionID: String, resume: Bool) -> String {
         let shell = ShellQuote.quote(ShellEnvironment.shell)
         let args: String
         switch kind {
         case .claude: args = "\(resume ? "--resume" : "--session-id") \(sessionID)"
-        case .codex: args = resume ? "resume \(ShellQuote.quote(sessionID))" : ""
+        case .codex:
+            let title = "-c " + ShellQuote.quote(#"tui.terminal_title=["activity","thread-title"]"#)
+            args = resume ? "resume \(title) \(ShellQuote.quote(sessionID))" : title
         }
         let inner = "\(ShellQuote.quote(launcherPath(kind))) \(args); exec \(shell) -l"
         // libghostty already runs this as `exec -l <command>` under /bin/bash.

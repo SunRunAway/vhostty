@@ -15,10 +15,17 @@ enum ShellEnvironment {
 
     private static let lock = NSLock()
     private static var _path = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    private static var _codexHome: String?
 
     static var path: String {
         lock.lock(); defer { lock.unlock() }
         return _path
+    }
+
+    /// CODEX_HOME as set by the user's shell, if at all.
+    static var codexHome: String? {
+        lock.lock(); defer { lock.unlock() }
+        return _codexHome
     }
 
     static func load() {
@@ -29,6 +36,18 @@ enum ShellEnvironment {
         guard !p.isEmpty else { return }
         lock.lock()
         _path = p
+        lock.unlock()
+    }
+
+    /// Codex runs in each tab's interactive login shell (ClaudeLauncher.command), so
+    /// read CODEX_HOME the same way: it may be set in an rc file.
+    static func loadCodexHome() {
+        let marker = "__VHOSTTY_CODEX_HOME__"
+        let result = Proc.run(shell, ["-l", "-i", "-c", "printf '\(marker)%s' \"$CODEX_HOME\""], timeout: 8, usePathEnv: false)
+        guard let out = result?.stdout, let range = out.range(of: marker) else { return }
+        let home = String(out[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        lock.lock()
+        _codexHome = home.nonEmpty
         lock.unlock()
     }
 

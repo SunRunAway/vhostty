@@ -24,7 +24,7 @@ The interface follows your system language (English or Simplified Chinese).
   2. The current branch
   3. The worktree name, or 「主工作区」 (main worktree) when not in a worktree
   4. The PR number, e.g. `#123`, colored by state: open green / merged purple / closed red. Click it to open the PR in your browser
-- **New session**: `cd`s into the project directory and starts `claude` or `codex`. A project's ⋯ menu has both; "Set Default Session" picks, per project, which one ⌘T and the ✎ button start. When the agent exits, the terminal stays in your shell. A new Codex session is matched to its card once you send its first message.
+- **New session**: `cd`s into the project directory and starts `claude` or `codex`. A project's ⋯ menu has both; "Set Default Session" picks, per project, which one ⌘T and the ✎ button start. When the agent exits, the terminal stays in your shell. A new Codex session is matched to its card once you send its first message. Inside Vhostty, Codex's terminal title is set by Vhostty (it reads the session id from there), so your `tui.terminal_title` setting doesn't apply in its cards.
 - **Live status**:
   - Spinner = the agent is working
   - ✋ = waiting for you to approve a permission (Claude only)

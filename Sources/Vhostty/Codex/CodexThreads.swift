@@ -2,9 +2,7 @@ import Foundation
 import SQLite3
 
 /// Codex sessions ("threads"), read from the index Codex keeps in
-/// ~/.codex/state_<n>.sqlite. The Codex TUI is a client of a shared background
-/// server, so unlike Claude Code its sessions can't be told apart by process:
-/// a new tab's thread is found by directory and start time instead.
+/// ~/.codex/state_<n>.sqlite.
 enum CodexThreads {
     struct Thread {
         let id: String
@@ -16,9 +14,10 @@ enum CodexThreads {
         let rolloutPath: String
     }
 
+    /// Where Codex keeps its data: CODEX_HOME as the tabs' shells see it.
     static var home: URL {
-        if let dir = ProcessInfo.processInfo.environment["CODEX_HOME"]?.nonEmpty {
-            return URL(fileURLWithPath: dir, isDirectory: true)
+        if let dir = ShellEnvironment.codexHome ?? ProcessInfo.processInfo.environment["CODEX_HOME"]?.nonEmpty {
+            return URL(fileURLWithPath: (dir as NSString).expandingTildeInPath, isDirectory: true)
         }
         return URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex")
     }
@@ -61,20 +60,6 @@ enum CodexThreads {
             return SessionSummary(id: t.id, title: title, modified: t.modified,
                                   path: URL(fileURLWithPath: t.rolloutPath), kind: .codex)
         }
-    }
-
-    /// The oldest Codex TUI thread started in `directory` since `since` that no
-    /// other tab has claimed. Codex records a thread once its first message is sent.
-    static func newThread(in directory: String, since: Date, excluding: Set<String>) -> Thread? {
-        let dirs = Array(Set([directory, realpath(directory)]))
-        let marks = dirs.map { _ in "?" }.joined(separator: ",")
-        let rows = query("""
-            SELECT \(columns) FROM threads
-            WHERE \(interactive) AND (originator = 'codex-tui' OR source = 'cli') AND cwd IN (\(marks))
-              AND ifnull(created_at_ms, created_at * 1000) >= ?
-            ORDER BY ifnull(created_at_ms, created_at * 1000) ASC
-            """, dirs + [Int(since.timeIntervalSince1970 * 1000)])
-        return rows.first { !excluding.contains($0.id) }
     }
 
     private static func directories(_ projectPath: String) -> [String] {

@@ -156,7 +156,7 @@ final class DebugSnapshot {
         for tab in store.tabs {
             lines.append("--- tab \(tab.id) kind=\(tab.kind) status=\(tab.status) attention=\(tab.attention) hooks=\(tab.hooksActive)")
             lines.append("    title=\(tab.title) | terminalTitle=\(tab.terminalTitle ?? "-")")
-            lines.append("    session=\(tab.sessionID) cwd=\(tab.cwd)")
+            lines.append("    session=\(tab.sessionID) codexThread=\(tab.codexThreadID ?? "-") cwd=\(tab.cwd)")
             lines.append("    branch=\(tab.branch ?? "-") worktree=\(tab.worktree ?? "-") pr=\(tab.prNumber.map(String.init) ?? "-") \(tab.prState ?? "")")
             if let sh = tab.shellSurface {
                 lines.append("    shell: visible=\(tab.shellVisible) focused=\(tab.shellFocused) cwd=\(tab.shellCwd ?? "-") frame=\(sh.frame) inWindow=\(sh.window != nil)")

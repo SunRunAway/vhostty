@@ -56,7 +56,7 @@ final class TabSession: ObservableObject, Identifiable {
     let projectID: UUID
 
     @Published var kind: AgentKind
-    /// Empty for a new Codex session until its thread shows up (see AppStore.discoverCodexThreads).
+    /// Empty for a new Codex session until Codex has saved its thread (see codexThreadID).
     @Published var sessionID: String
     @Published var title: String
     @Published var branch: String?
@@ -78,8 +78,9 @@ final class TabSession: ObservableObject, Identifiable {
     var titleBusy = false
     var transcript: TranscriptInfo?
     var hooksActive = false
-    /// When a new Codex session was started, to find the thread it creates.
-    var launchedAt: Date?
+    /// The thread Codex shows in its terminal title. Codex only saves a thread once
+    /// its first message is sent, so this becomes sessionID once it's saved.
+    var codexThreadID: String?
     var surface: TerminalSurfaceView?
 
     /// The bottom shell panel's terminal (created on first ⌘J).

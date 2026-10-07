@@ -371,7 +371,7 @@ final class AppStore: ObservableObject {
             resume = transcript != nil
         case .codex:
             resume = !tab.sessionID.isEmpty
-            tab.launchedAt = resume ? nil : Date()
+            tab.codexThreadID = nil
         }
         let options = TerminalSurfaceView.Options(
             workingDirectory: launchDirectory(project),
@@ -455,8 +455,9 @@ final class AppStore: ObservableObject {
     /// it also covers turns that end without a Stop hook (Esc). "✳" also shows
     /// while Claude waits for an answer or a permission, so needing you comes
     /// from the Notification hook.
-    /// Codex's title is "<spinner> <thread title> | <directory>", with the
-    /// spinner (braille dots) only while it works.
+    /// Codex's title (as set by ClaudeLauncher) is "<spinner> <thread title>", with
+    /// the spinner (braille dots) only while it works; the thread title is the
+    /// thread's id until the thread has one.
     private func terminalTitleChanged(_ tab: TabSession, _ raw: String) {
         var title = raw.trimmingCharacters(in: .whitespaces)
         var glyph: Character?
@@ -493,10 +494,21 @@ final class AppStore: ObservableObject {
         }
 
         if tab.kind == .codex {
-            // Just the directory until the first message names the thread.
-            let parts = title.components(separatedBy: " | ")
-            let name = parts.dropLast().joined(separator: " | ")
-            tab.terminalTitle = name.contains { $0.isLetter || $0.isNumber } ? name : nil
+            // Codex appends a spinner while it's naming the thread.
+            if let last = title.last, !last.isLetter, !last.isNumber, title.dropLast().hasSuffix(" ") {
+                title = String(title.dropLast()).trimmingCharacters(in: .whitespaces)
+            }
+            if title.count == 36, UUID(uuidString: title) != nil {
+                tab.terminalTitle = nil
+                if tab.codexThreadID != title.lowercased() {
+                    tab.codexThreadID = title.lowercased()
+                    confirmCodexThreads()
+                }
+            } else {
+                // Once Codex quits, the title is the shell's.
+                let named = title.contains { $0.isLetter || $0.isNumber }
+                tab.terminalTitle = named && tab.status != .exited ? title : nil
+            }
         } else {
             let generic = ["claude", "claude code", ""].contains(title.lowercased())
                 || title.hasPrefix("/") || title.hasPrefix("~") || title.contains("@")
@@ -576,34 +588,24 @@ final class AppStore: ObservableObject {
 
     private func refreshAllInfo() {
         refreshLiveSessions()
-        discoverCodexThreads()
+        confirmCodexThreads()
         for tab in tabs { refreshInfo(tab) }
     }
 
-    /// A new Codex session is recorded once its first message is sent. Each tab
-    /// waiting for one claims the oldest unclaimed Codex TUI thread started in its
-    /// directory since the tab launched it.
-    private func discoverCodexThreads() {
-        let pending: [(TabSession, String, Date)] = tabs.compactMap { tab in
-            guard tab.kind == .codex, tab.sessionID.isEmpty, tab.isLaunched, let at = tab.launchedAt,
-                  let project = project(tab.projectID) else { return nil }
-            return (tab, launchDirectory(project), at)
+    /// A Codex thread shown in a tab's title becomes the tab's session once Codex
+    /// has saved it (on its first message); before that it can't be resumed.
+    private func confirmCodexThreads() {
+        let pending: [(TabSession, String)] = tabs.compactMap { tab in
+            guard tab.kind == .codex, let id = tab.codexThreadID, id != tab.sessionID else { return nil }
+            return (tab, id)
         }
         guard !pending.isEmpty else { return }
-        var claimed = Set(tabs.map(\.sessionID))
         infoQueue.async { [weak self] in
-            var found: [(TabSession, String)] = []
-            for (tab, dir, at) in pending {
-                guard let thread = CodexThreads.newThread(in: dir, since: at.addingTimeInterval(-2), excluding: claimed)
-                else { continue }
-                claimed.insert(thread.id)
-                found.append((tab, thread.id))
-            }
+            let saved = pending.filter { CodexThreads.thread(id: $0.1) != nil }
             DispatchQueue.main.async {
                 guard let self else { return }
-                for (tab, id) in found where tab.sessionID.isEmpty && !self.tabs.contains(where: { $0.sessionID == id }) {
+                for (tab, id) in saved where tab.codexThreadID == id && tab.sessionID != id {
                     tab.sessionID = id
-                    tab.launchedAt = nil
                     self.scheduleSave()
                     self.refreshInfo(tab)
                 }
@@ -619,7 +621,7 @@ final class AppStore: ObservableObject {
             let live = LiveSessions.scan()
             DispatchQueue.main.async {
                 guard let self else { return }
-                // Codex sessions don't show up here (see discoverCodexThreads).
+                // Codex sessions don't show up here (see confirmCodexThreads).
                 for tab in self.tabs where tab.isLaunched && tab.kind == .claude {
                     let entry = live[tab.id]
                     let lastPID = self.livePIDs[tab.id]
