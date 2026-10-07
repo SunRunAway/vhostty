@@ -14,7 +14,8 @@ struct SessionCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 7) {
-                StatusIndicator(status: tab.status, attention: tab.attention)
+                StatusIndicator(status: tab.status, attention: tab.attention, kind: tab.kind)
+                AgentIcon(kind: tab.kind, size: 11)
                 Text(tab.title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(selected ? .primary : .secondary)
@@ -134,13 +135,16 @@ struct SessionCard: View {
         Button("Show Directory in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: tab.cwd)])
         }
-        Button("Copy Session ID") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(tab.sessionID, forType: .string)
-        }
-        Button("Copy Resume Command") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString("claude --resume \(tab.sessionID)", forType: .string)
+        if !tab.sessionID.isEmpty {
+            Button("Copy Session ID") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(tab.sessionID, forType: .string)
+            }
+            Button("Copy Resume Command") {
+                NSPasteboard.general.clearContents()
+                let command = tab.kind == .claude ? "claude --resume \(tab.sessionID)" : "codex resume \(tab.sessionID)"
+                NSPasteboard.general.setString(command, forType: .string)
+            }
         }
     }
 }
@@ -148,6 +152,7 @@ struct SessionCard: View {
 struct StatusIndicator: View {
     let status: SessionStatus
     let attention: Bool
+    var kind: AgentKind = .claude
 
     var body: some View {
         Group {
@@ -174,12 +179,12 @@ struct StatusIndicator: View {
 
     private var statusHelp: String {
         switch status {
-        case .working: return String(localized: "Claude is working")
-        case .needsInput: return String(localized: "Claude needs your input")
-        case .idle: return attention ? String(localized: "Claude is done (unread)") : String(localized: "Waiting for input")
+        case .working: return String(localized: "\(kind.name) is working")
+        case .needsInput: return String(localized: "\(kind.name) needs your input")
+        case .idle: return attention ? String(localized: "\(kind.name) is done (unread)") : String(localized: "Waiting for input")
         case .starting: return String(localized: "Starting")
         case .dormant: return String(localized: "Not started (click to resume)")
-        case .exited: return String(localized: "Claude exited")
+        case .exited: return String(localized: "\(kind.name) exited")
         }
     }
 }

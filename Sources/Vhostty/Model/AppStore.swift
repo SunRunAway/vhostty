@@ -21,6 +21,8 @@ final class AppStore: ObservableObject {
     /// Height fraction of the bottom shell panel (shared by all sessions).
     @Published var shellFraction: CGFloat = 0.35
     @Published var terminalBackground = Color(red: 0.16, green: 0.17, blue: 0.20)
+    /// What ⌘T and the sidebar's new-session button start.
+    @Published private(set) var defaultKind: AgentKind = .claude
 
     /// Set by the AppKit host so the store can move keyboard focus into terminals.
     weak var terminalContainer: TerminalContainerView?
@@ -56,6 +58,7 @@ final class AppStore: ObservableObject {
             if let w = state.sidebarWidth { sidebarWidth = CGFloat(w) }
             if let v = state.sidebarVisible { sidebarVisible = v }
             if let f = state.shellFraction { shellFraction = CGFloat(f) }
+            if let k = state.defaultKind { defaultKind = k }
         }
         if selectedTabID != nil, selectedTab == nil { selectedTabID = tabs.first?.id }
 
@@ -81,7 +84,8 @@ final class AppStore: ObservableObject {
             selectedTabID: selectedTabID,
             sidebarWidth: Double(sidebarWidth),
             sidebarVisible: sidebarVisible,
-            shellFraction: Double(shellFraction))
+            shellFraction: Double(shellFraction),
+            defaultKind: defaultKind)
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: AppPaths.state, options: .atomic)
         }
@@ -177,14 +181,27 @@ final class AppStore: ObservableObject {
 
     // MARK: - Tabs
 
-    func newSession(in project: Project? = nil) {
+    func newSession(in project: Project? = nil, kind: AgentKind? = nil) {
         guard let project = project ?? currentProject else {
             addProjectViaPanel()
             return
         }
-        let tab = TabSession(projectID: project.id, sessionID: UUID().uuidString.lowercased(), cwd: project.path)
+        let kind = kind ?? defaultKind
+        // Codex can't be given a session id; it gets one once its thread shows up.
+        let sessionID = kind == .claude ? UUID().uuidString.lowercased() : ""
+        let tab = TabSession(projectID: project.id, kind: kind, sessionID: sessionID, cwd: project.path)
         insertAtTopOfProject(tab)
         select(tab)
+    }
+
+    /// Both kinds, the default first (the order of the "New … Session" menu items).
+    var kindsDefaultFirst: [AgentKind] {
+        [defaultKind] + AgentKind.allCases.filter { $0 != defaultKind }
+    }
+
+    func setDefaultKind(_ kind: AgentKind) {
+        defaultKind = kind
+        scheduleSave()
     }
 
     func resumeSession(_ summary: SessionSummary, in project: Project) {
@@ -192,7 +209,8 @@ final class AppStore: ObservableObject {
             select(open)
             return
         }
-        let tab = TabSession(projectID: project.id, sessionID: summary.id, cwd: project.path, title: summary.title)
+        let tab = TabSession(projectID: project.id, kind: summary.kind, sessionID: summary.id, cwd: project.path,
+                             title: summary.title)
         insertAtTopOfProject(tab)
         select(tab)
     }
@@ -332,7 +350,7 @@ final class AppStore: ObservableObject {
         if processAlive && !UserDefaults.standard.bool(forKey: Self.skipCloseConfirmKey) {
             let alert = NSAlert()
             alert.messageText = String(localized: "Close “\(tab.title)”?")
-            alert.informativeText = String(localized: "Claude is still running. Closing will end it. The history is kept and can be resumed from the sidebar later.")
+            alert.informativeText = String(localized: "\(tab.kind.name) is still running. Closing will end it. The history is kept and can be resumed from the sidebar later.")
             alert.addButton(withTitle: String(localized: "Close"))
             alert.addButton(withTitle: String(localized: "Cancel"))
             alert.showsSuppressionButton = true
@@ -349,11 +367,19 @@ final class AppStore: ObservableObject {
 
     private func launchIfNeeded(_ tab: TabSession) {
         guard tab.surface == nil, let project = project(tab.projectID) else { return }
-        let transcript = Transcript.locate(sessionID: tab.sessionID, projectPath: project.path)
-        let workdir = FileManager.default.fileExists(atPath: project.path) ? project.path : NSHomeDirectory()
+        var transcript: URL?
+        let resume: Bool
+        switch tab.kind {
+        case .claude:
+            transcript = Transcript.locate(sessionID: tab.sessionID, projectPath: project.path)
+            resume = transcript != nil
+        case .codex:
+            resume = !tab.sessionID.isEmpty
+            tab.launchedAt = resume ? nil : Date()
+        }
         let options = TerminalSurfaceView.Options(
-            workingDirectory: workdir,
-            command: ClaudeLauncher.command(sessionID: tab.sessionID, resume: transcript != nil),
+            workingDirectory: launchDirectory(project),
+            command: ClaudeLauncher.command(kind: tab.kind, sessionID: tab.sessionID, resume: resume),
             environment: ClaudeLauncher.environment(tabID: tab.id))
         let surface = TerminalSurfaceView(options: options)
         surface.onTitleChange = { [weak self, weak tab] title in
@@ -366,6 +392,10 @@ final class AppStore: ObservableObject {
         tab.hooksActive = false
         tab.titleBusy = false
         refreshInfo(tab)
+    }
+
+    private func launchDirectory(_ project: Project) -> String {
+        FileManager.default.fileExists(atPath: project.path) ? project.path : NSHomeDirectory()
     }
 
     // MARK: - Bottom shell panel
@@ -429,6 +459,8 @@ final class AppStore: ObservableObject {
     /// it also covers turns that end without a Stop hook (Esc). "✳" also shows
     /// while Claude waits for an answer or a permission, so needing you comes
     /// from the Notification hook.
+    /// Codex's title is "<spinner> <thread title> | <directory>", with the
+    /// spinner (braille dots) only while it works.
     private func terminalTitleChanged(_ tab: TabSession, _ raw: String) {
         var title = raw.trimmingCharacters(in: .whitespaces)
         var glyph: Character?
@@ -439,11 +471,15 @@ final class AppStore: ObservableObject {
         }
 
         // Any glyph other than "✳" (◐◓◑◒, braille dots, ✶✻…) is the spinner.
-        if let g = glyph {
-            let busy = g != "✳"
+        let busy: Bool? = tab.kind == .codex ? glyph != nil : glyph.map { $0 != "✳" }
+        if let busy {
             let wasBusy = tab.titleBusy
             tab.titleBusy = busy
-            if busy {
+            if tab.kind == .codex && tab.status == .starting {
+                // Codex also spins while it boots or reloads a resumed session;
+                // that isn't a turn. It's ready once that first spin stops.
+                if !busy && wasBusy { tab.status = .idle }
+            } else if busy {
                 // The spinner coming back means Claude went on (the question was
                 // answered); later frames of the same spin don't undo a question
                 // raised by a hook meanwhile.
@@ -460,9 +496,16 @@ final class AppStore: ObservableObject {
             }
         }
 
-        let generic = ["claude", "claude code", ""].contains(title.lowercased())
-            || title.hasPrefix("/") || title.hasPrefix("~") || title.contains("@")
-        tab.terminalTitle = generic ? nil : title
+        if tab.kind == .codex {
+            // Just the directory until the first message names the thread.
+            let parts = title.components(separatedBy: " | ")
+            let name = parts.dropLast().joined(separator: " | ")
+            tab.terminalTitle = name.contains { $0.isLetter || $0.isNumber } ? name : nil
+        } else {
+            let generic = ["claude", "claude code", ""].contains(title.lowercased())
+                || title.hasPrefix("/") || title.hasPrefix("~") || title.contains("@")
+            tab.terminalTitle = generic ? nil : title
+        }
         updateTitle(tab)
     }
 
@@ -488,6 +531,14 @@ final class AppStore: ObservableObject {
 
     func handleHook(_ event: HookEvent) {
         guard let tab = tab(withID: event.tabID) else { return }
+        if tab.kind == .codex {
+            // Codex runs no Vhostty hooks; its launcher only reports that it quit.
+            if event.name == "SessionEnd" {
+                tab.status = .exited
+                updateDockBadge()
+            }
+            return
+        }
         tab.hooksActive = true
         if let sid = event.sessionID, sid != tab.sessionID {
             tab.sessionID = sid
@@ -529,7 +580,39 @@ final class AppStore: ObservableObject {
 
     private func refreshAllInfo() {
         refreshLiveSessions()
+        discoverCodexThreads()
         for tab in tabs { refreshInfo(tab) }
+    }
+
+    /// A new Codex session is recorded once its first message is sent. Each tab
+    /// waiting for one claims the oldest unclaimed Codex TUI thread started in its
+    /// directory since the tab launched it.
+    private func discoverCodexThreads() {
+        let pending: [(TabSession, String, Date)] = tabs.compactMap { tab in
+            guard tab.kind == .codex, tab.sessionID.isEmpty, tab.isLaunched, let at = tab.launchedAt,
+                  let project = project(tab.projectID) else { return nil }
+            return (tab, launchDirectory(project), at)
+        }
+        guard !pending.isEmpty else { return }
+        var claimed = Set(tabs.map(\.sessionID))
+        infoQueue.async { [weak self] in
+            var found: [(TabSession, String)] = []
+            for (tab, dir, at) in pending {
+                guard let thread = CodexThreads.newThread(in: dir, since: at.addingTimeInterval(-2), excluding: claimed)
+                else { continue }
+                claimed.insert(thread.id)
+                found.append((tab, thread.id))
+            }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                for (tab, id) in found where tab.sessionID.isEmpty && !self.tabs.contains(where: { $0.sessionID == id }) {
+                    tab.sessionID = id
+                    tab.launchedAt = nil
+                    self.scheduleSave()
+                    self.refreshInfo(tab)
+                }
+            }
+        }
     }
 
     /// Follows the session actually running in each tab. This covers a `claude`
@@ -540,7 +623,8 @@ final class AppStore: ObservableObject {
             let live = LiveSessions.scan()
             DispatchQueue.main.async {
                 guard let self else { return }
-                for tab in self.tabs where tab.isLaunched {
+                // Codex sessions don't show up here (see discoverCodexThreads).
+                for tab in self.tabs where tab.isLaunched && tab.kind == .claude {
                     let entry = live[tab.id]
                     let lastPID = self.livePIDs[tab.id]
                     self.livePIDs[tab.id] = entry?.pid
@@ -570,14 +654,30 @@ final class AppStore: ObservableObject {
         let sessionID = tab.sessionID
         let knownPath = tab.transcriptPath
         let hookCwd = tab.hooksActive || !tab.isLaunched ? tab.cwd : nil
+        let kind = tab.kind
 
         infoQueue.async { [weak self] in
-            // The path reported by hooks can be stale: a session that entered a
-            // worktree gets its transcript relocated to that worktree's directory.
-            let url = knownPath.map { URL(fileURLWithPath: $0) }
-                .flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
-                ?? Transcript.locate(sessionID: sessionID, projectPath: project.path)
-            let info = url.flatMap { Transcript.read($0) }
+            var url: URL?
+            let info: TranscriptInfo?
+            switch kind {
+            case .claude:
+                // The path reported by hooks can be stale: a session that entered a
+                // worktree gets its transcript relocated to that worktree's directory.
+                url = knownPath.map { URL(fileURLWithPath: $0) }
+                    .flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
+                    ?? Transcript.locate(sessionID: sessionID, projectPath: project.path)
+                info = url.flatMap { Transcript.read($0) }
+            case .codex:
+                info = CodexThreads.thread(id: sessionID).map { t in
+                    var info = TranscriptInfo()
+                    info.aiTitle = t.title
+                    info.firstPrompt = t.firstPrompt
+                    info.cwd = t.cwd.nonEmpty
+                    info.gitBranch = t.branch
+                    info.modified = t.modified
+                    return info
+                }
+            }
             var cwd = hookCwd ?? info?.cwd ?? project.path
             // A resumed session that lives in a worktree reports the launch directory
             // in hooks, but Claude works inside the worktree recorded in the transcript.
@@ -651,9 +751,16 @@ final class AppStore: ObservableObject {
         let snapshot = projects
         infoQueue.async { [weak self] in
             var result: [UUID: [SessionSummary]] = [:]
-            for p in snapshot { result[p.id] = Transcript.history(projectPath: p.path) }
+            for p in snapshot { result[p.id] = Self.history(projectPath: p.path) }
             DispatchQueue.main.async { self?.history = result }
         }
+    }
+
+    /// Claude and Codex sessions of a project, newest first.
+    private static func history(projectPath: String, limit: Int = 40) -> [SessionSummary] {
+        let all = Transcript.history(projectPath: projectPath, limit: limit)
+            + CodexThreads.history(projectPath: projectPath, limit: limit)
+        return Array(all.sorted { $0.modified > $1.modified }.prefix(limit))
     }
 
     /// History sessions that aren't currently open in a tab.
@@ -669,7 +776,7 @@ final class AppStore: ObservableObject {
         if searchQuery[project.id] == nil { searchQuery[project.id] = "" }
         let id = project.id, path = project.path
         infoQueue.async { [weak self] in
-            let all = Transcript.history(projectPath: path, limit: .max)
+            let all = Self.history(projectPath: path, limit: .max)
             DispatchQueue.main.async {
                 guard let self, self.searchQuery[id] != nil else { return }
                 self.searchHistory[id] = all

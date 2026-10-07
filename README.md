@@ -25,6 +25,7 @@ The interface follows your system language (English or Simplified Chinese).
   3. The worktree name, or 「主工作区」 (main worktree) when not in a worktree
   4. The PR number, e.g. `#123`, colored by state: open green / merged purple / closed red. Click it to open the PR in your browser
 - **New session**: `cd`s into the project directory and starts `claude`. When claude exits, the terminal stays in your shell.
+- **Codex too**: a project's ⋯ menu can also start a Codex session (`codex`), and "Set Default Session" picks which one ⌘T and the ✎ button start. Each card and history entry shows a Claude or Codex icon. A new Codex session is matched to its card once you send its first message; Codex cards get their title and working / idle status from Codex's terminal title. Claude-only features (the ✋ permission state, hooks) don't apply to Codex.
 - **Live status**:
   - Spinner = Claude is working
   - ✋ = waiting for you to approve a permission
@@ -32,7 +33,7 @@ The interface follows your system language (English or Simplified Chinese).
   - Blue dot = finished in the background and you haven't looked yet
   - Hollow circle = not started
 - **Background notifications**: these are Claude Code's own terminal notifications (it sends OSC 9/777 once it detects Ghostty), so your notification settings in Claude are respected. When the session isn't selected or the window is in the background, Vhostty turns them into macOS system notifications; clicking one jumps to that session. Claude usually only notifies after finishing and waiting about 60 seconds for you, but the blue dot on the card and the Dock badge update immediately (via hooks).
-- **Session history**: each project lists its recent Claude sessions; click one to resume it with `claude --resume`.
+- **Session history**: each project lists its recent Claude and Codex sessions; click one to resume it with `claude --resume` or `codex resume`.
 - **Autosave**: all session cards are saved on quit. On next launch a session is only restored when you click its card, so you don't get a pile of claude processes starting at once.
 - **Bottom shell**: every session can pull up a plain shell below Claude (⌘J or ⌃`), in the same directory Claude is currently in. The divider between the two is draggable, and whether the panel is open is saved with the session.
 - **Reuses your Ghostty config**: reads your Ghostty config (fonts, theme, keybindings) from `~/.config/ghostty/config` or `~/Library/Application Support/com.mitchellh.ghostty/config`.
@@ -41,7 +42,7 @@ The interface follows your system language (English or Simplified Chinese).
 
 | Shortcut | Action |
 |---|---|
-| ⌘T | New Claude session in the current project |
+| ⌘T | New session (of the default kind) in the current project |
 | ⇧⌘O | Add project |
 | ⌘W | Close the current session (asks first if Claude is still running) |
 | ⌘1…9 | Switch to the Nth session |

@@ -26,6 +26,19 @@ enum ProjectPalette {
     }
 }
 
+/// Which coding agent a session runs.
+enum AgentKind: String, Codable, CaseIterable, Identifiable {
+    case claude
+    case codex
+
+    var id: String { rawValue }
+    var name: String { self == .claude ? "Claude" : "Codex" }
+
+    var newSessionTitle: LocalizedStringKey {
+        self == .claude ? "New Claude Session" : "New Codex Session"
+    }
+}
+
 enum SessionStatus: String, Codable {
     case dormant     // restored from disk, Claude not started yet
     case starting
@@ -35,11 +48,13 @@ enum SessionStatus: String, Codable {
     case exited
 }
 
-/// One session card = one terminal running Claude Code (+ an optional bottom shell).
+/// One session card = one terminal running Claude Code or Codex (+ an optional bottom shell).
 final class TabSession: ObservableObject, Identifiable {
     let id: UUID
     let projectID: UUID
 
+    @Published var kind: AgentKind
+    /// Empty for a new Codex session until its thread shows up (see AppStore.discoverCodexThreads).
     @Published var sessionID: String
     @Published var title: String
     @Published var branch: String?
@@ -61,6 +76,8 @@ final class TabSession: ObservableObject, Identifiable {
     var titleBusy = false
     var transcript: TranscriptInfo?
     var hooksActive = false
+    /// When a new Codex session was started, to find the thread it creates.
+    var launchedAt: Date?
     var surface: TerminalSurfaceView?
 
     /// The bottom shell panel's terminal (created on first ⌘J).
@@ -72,10 +89,11 @@ final class TabSession: ObservableObject, Identifiable {
 
     var isLaunched: Bool { surface != nil }
 
-    init(id: UUID = UUID(), projectID: UUID, sessionID: String, cwd: String, title: String = String(localized: "New Session"),
-         status: SessionStatus = .starting) {
+    init(id: UUID = UUID(), projectID: UUID, kind: AgentKind = .claude, sessionID: String, cwd: String,
+         title: String = String(localized: "New Session"), status: SessionStatus = .starting) {
         self.id = id
         self.projectID = projectID
+        self.kind = kind
         self.sessionID = sessionID
         self.cwd = cwd
         self.title = title
@@ -83,13 +101,13 @@ final class TabSession: ObservableObject, Identifiable {
     }
 
     var record: TabRecord {
-        TabRecord(id: id, projectID: projectID, sessionID: sessionID, title: title, cwd: cwd,
+        TabRecord(id: id, projectID: projectID, kind: kind, sessionID: sessionID, title: title, cwd: cwd,
                   branch: branch, worktree: worktree, prNumber: prNumber, prURL: prURL, prState: prState,
                   shellOpen: shellVisible, shellCwd: shellCwd)
     }
 
     convenience init(record r: TabRecord) {
-        self.init(id: r.id, projectID: r.projectID, sessionID: r.sessionID, cwd: r.cwd, title: r.title, status: .dormant)
+        self.init(id: r.id, projectID: r.projectID, kind: r.kind ?? .claude, sessionID: r.sessionID, cwd: r.cwd, title: r.title, status: .dormant)
         branch = r.branch
         worktree = r.worktree
         prNumber = r.prNumber
@@ -103,6 +121,7 @@ final class TabSession: ObservableObject, Identifiable {
 struct TabRecord: Codable {
     var id: UUID
     var projectID: UUID
+    var kind: AgentKind?
     var sessionID: String
     var title: String
     var cwd: String
@@ -122,4 +141,5 @@ struct PersistedState: Codable {
     var sidebarWidth: Double?
     var sidebarVisible: Bool?
     var shellFraction: Double?
+    var defaultKind: AgentKind?
 }

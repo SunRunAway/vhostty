@@ -103,8 +103,8 @@ final class DebugSnapshot {
                 store.select(tab)
                 continue
             }
-            if line == "new" {
-                store.newSession()
+            if line == "new" || line == "new claude" || line == "new codex" {
+                store.newSession(kind: line == "new" ? nil : (line.hasSuffix("codex") ? .codex : .claude))
                 continue
             }
             if line == "search" || line.hasPrefix("search "), let project = store.currentProject ?? store.projects.first {
@@ -154,7 +154,7 @@ final class DebugSnapshot {
         lines.append("selected: \(store.selectedTabID?.uuidString ?? "-")")
         lines.append("firstResponder: \(String(describing: window.firstResponder.map { type(of: $0) }))")
         for tab in store.tabs {
-            lines.append("--- tab \(tab.id) status=\(tab.status) attention=\(tab.attention) hooks=\(tab.hooksActive)")
+            lines.append("--- tab \(tab.id) kind=\(tab.kind) status=\(tab.status) attention=\(tab.attention) hooks=\(tab.hooksActive)")
             lines.append("    title=\(tab.title) | terminalTitle=\(tab.terminalTitle ?? "-")")
             lines.append("    session=\(tab.sessionID) cwd=\(tab.cwd)")
             lines.append("    branch=\(tab.branch ?? "-") worktree=\(tab.worktree ?? "-") pr=\(tab.prNumber.map(String.init) ?? "-") \(tab.prState ?? "")")

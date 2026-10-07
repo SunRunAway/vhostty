@@ -16,6 +16,14 @@ $SHELL -l -i -c 'vhostty-claude --session-id <uuid>; exec $SHELL -l'
 - 会话 ID 由 Vhostty 生成，所以它确切知道每张卡片对应哪个 Claude 会话，之后也能 `--resume` 恢复。
 - Claude 退出后在同一个 tab 里手动跑 `claude -r <id>` 也会被跟踪：Claude Code 为每个运行中的进程写 `~/.claude/sessions/<pid>.json`，Vhostty 从进程环境变量里的 `VHOSTTY_TAB_ID` 认出它属于哪张卡片，把卡片切到那个会话。这样起的 claude 不带 hooks，状态只能靠终端标题。
 
+### Codex 会话
+
+Codex 每张卡片跑的是 `vhostty-codex`（新建）或 `vhostty-codex resume <id>`（恢复），它只是调用 `codex`，退出后通过 `vhostty-hook` 告诉 App。和 Claude 的不同：
+
+- Codex 不能预先指定会话 ID，而且 TUI 只是共享后台服务（daemon）的客户端，进程上看不出它在跑哪个会话。所以 Vhostty 读 Codex 的会话索引 `~/.codex/state_<n>.sqlite` 的 `threads` 表：卡片启动后，认领同一目录里、启动之后创建、`originator = codex-tui`、还没被别的卡片认领的最早一个会话。Codex 在发出第一条消息时才创建会话，所以在那之前卡片没有会话 ID。
+- 不注入 Codex hooks（Codex 的 hooks 要用户手动信任，而且在 daemon 里运行，拿不到卡片的环境变量）。状态来自终端标题：Codex 默认标题是 `<转圈> <会话标题> | <目录名>`，有转圈就是工作中。启动和恢复时 Codex 也会转一会儿，这一段不算一轮工作。
+- 历史会话、标题、分支也来自 `threads` 表（只列用户自己发起的会话，不含子代理、自动化和已归档的）。
+
 ### 卡片上的信息从哪来
 
 | 信息 | 来源 |
@@ -58,7 +66,7 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 | `text …`、`enter`、`up`、`down`、`esc` | 往指定的终端输入文字或按键 |
 | `notify` | 给指定会话发一条测试通知，授权状态写到 `notify.txt` |
 | `select <UUID>` | 切换到这个会话 |
-| `new` | 新建会话 |
+| `new` / `new claude` / `new codex` | 新建默认类型 / Claude / Codex 会话 |
 | `search [文字]` / `endsearch` | 打开当前项目的会话搜索并填入文字 / 关闭搜索 |
 | `toggleshell` | 开关当前会话的底部终端 |
 | `focus claude` / `focus shell` | 聚焦上面 / 下面的终端 |

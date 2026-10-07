@@ -23,6 +23,7 @@ struct SessionSummary: Identifiable, Hashable {
     let title: String
     let modified: Date
     let path: URL
+    var kind: AgentKind = .claude
 }
 
 enum Transcript {

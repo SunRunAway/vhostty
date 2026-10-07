@@ -159,7 +159,7 @@ private struct ProjectRow: View {
                 IconButton(systemName: "magnifyingglass", help: "Search Sessions") {
                     if store.searchQuery[project.id] != nil { store.closeSearch(project) } else { store.openSearch(project) }
                 }
-                IconButton(systemName: "square.and.pencil", help: "New Claude Session") {
+                IconButton(systemName: "square.and.pencil", help: store.defaultKind.newSessionTitle) {
                     store.newSession(in: project)
                 }
             }
@@ -177,8 +177,17 @@ private struct ProjectRow: View {
 
     @ViewBuilder
     private var projectMenu: some View {
-        Button("New Claude Session") { store.newSession(in: project) }
+        ForEach(store.kindsDefaultFirst) { kind in
+            Button(kind.newSessionTitle) { store.newSession(in: project, kind: kind) }
+        }
         Button("Search Sessions") { store.openSearch(project) }
+        Menu("Set Default Session") {
+            ForEach(AgentKind.allCases) { kind in
+                Toggle(kind.name, isOn: Binding(
+                    get: { store.defaultKind == kind },
+                    set: { if $0 { store.setDefaultKind(kind) } }))
+            }
+        }
         Divider()
         Button("Show in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: project.path)])
@@ -239,9 +248,8 @@ private struct HistoryRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 10.5))
-                .foregroundStyle(.tertiary)
+            AgentIcon(kind: summary.kind, size: 11)
+                .opacity(0.7)
                 .frame(width: 14)
             Text(summary.title)
                 .font(.system(size: 13))
@@ -260,7 +268,7 @@ private struct HistoryRow: View {
         .contentShape(Rectangle())
         .onHover { hover = $0 }
         .onTapGesture { store.resumeSession(summary, in: project) }
-        .help("Resume session: \(summary.title)")
+        .help("Resume \(summary.kind.name) session: \(summary.title)")
     }
 }
 

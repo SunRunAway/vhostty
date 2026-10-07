@@ -1,0 +1,10 @@
+#!/bin/sh
+# Started by Vhostty in each Codex tab. Codex's TUI talks to a shared background
+# server, so Vhostty can't see from processes when it quits; tell it here, through
+# the same helper Claude Code's hooks use.
+codex "$@"
+status=$?
+if [ -n "$VHOSTTY_HOOK" ] && [ -x "$VHOSTTY_HOOK" ]; then
+  printf '{"hook_event_name":"SessionEnd"}' | "$VHOSTTY_HOOK"
+fi
+exit $status

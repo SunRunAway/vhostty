@@ -10,6 +10,7 @@
 "Quit Vhostty" = "退出 Vhostty";
 "File" = "文件";
 "New Claude Session" = "新建 Claude 会话";
+"New Codex Session" = "新建 Codex 会话";
 "Add Project…" = "添加项目…";
 "Close Session" = "关闭会话";
 "Edit" = "编辑";
@@ -63,7 +64,7 @@
 "Close the bottom terminal?" = "关闭底部终端？";
 "A program is still running in the terminal. Closing will end it." = "终端里还有程序在运行，关闭会结束它。";
 "Close “%@”?" = "关闭「%@」？";
-"Claude is still running. Closing will end it. The history is kept and can be resumed from the sidebar later." = "Claude 仍在运行，关闭会结束它。会话记录会保留，可以之后从侧栏恢复。";
+"%@ is still running. Closing will end it. The history is kept and can be resumed from the sidebar later." = "%@ 仍在运行，关闭会结束它。会话记录会保留，可以之后从侧栏恢复。";
 "Don’t ask again" = "不再询问";
 
 /* Sidebar */
@@ -82,7 +83,8 @@
 "Title or Session ID" = "标题或会话 ID";
 "Close Search" = "关闭搜索";
 "No Matching Sessions" = "没有匹配的会话";
-"Resume session: %@" = "恢复会话：%@";
+"Resume %@ session: %@" = "恢复 %1$@ 会话：%2$@";
+"Set Default Session" = "设置默认会话";
 "now" = "刚刚";
 "%lldm" = "%lld分钟";
 "%lldh" = "%lld小时";
@@ -101,17 +103,17 @@
 "Show Directory in Finder" = "在 Finder 中显示目录";
 "Copy Session ID" = "拷贝会话 ID";
 "Copy Resume Command" = "拷贝恢复命令";
-"Claude is working" = "Claude 正在工作";
-"Claude needs your input" = "Claude 需要你确认";
-"Claude is done (unread)" = "Claude 已完成（未查看）";
+"%@ is working" = "%@ 正在工作";
+"%@ needs your input" = "%@ 需要你确认";
+"%@ is done (unread)" = "%@ 已完成（未查看）";
 "Waiting for input" = "等待输入";
 "Starting" = "启动中";
 "Not started (click to resume)" = "未启动（点击后恢复会话）";
-"Claude exited" = "Claude 已退出";
+"%@ exited" = "%@ 已退出";
 
 /* Empty state */
 "Add a project directory, then summon Claude in it." = "添加一个项目目录，然后在里面召唤 Claude。";
-"Choose a project to start a new Claude session." = "选择一个项目，开始新的 Claude 会话。";
+"Choose a project to start a new %@ session." = "选择一个项目，开始新的 %@ 会话。";
 "New session in %@" = "在 %@ 中新建会话";
 "New session in the current project" = "在当前项目新建会话";
 "Switch sessions" = "切换会话";

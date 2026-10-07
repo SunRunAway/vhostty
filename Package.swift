@@ -17,6 +17,7 @@ let package = Package(
                 .unsafeFlags(["-L", "build/ghostty/lib"]),
                 .linkedLibrary("ghostty"),
                 .linkedLibrary("c++"),
+                .linkedLibrary("sqlite3"),
                 .linkedFramework("AppKit"),
                 .linkedFramework("Carbon"),
                 .linkedFramework("CoreText"),

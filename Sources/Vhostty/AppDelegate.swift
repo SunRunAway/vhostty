@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import UserNotifications
 import GhosttyC
@@ -9,6 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
     var window: NSWindow!
     private var hookServer: HookServer?
     private var debugSnapshot: DebugSnapshot?
+    private var fileMenu: NSMenu?
+    private var newSessionItems: [AgentKind: NSMenuItem] = [:]
+    private var defaultKindWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         DispatchQueue.global(qos: .userInitiated).async { ShellEnvironment.load() }
@@ -125,11 +129,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         addSubmenu(main, "Vhostty", appMenu)
 
         let file = NSMenu()
-        file.addItem(item("New Claude Session", #selector(newSession), "t"))
+        newSessionItems = [
+            .claude: item("New Claude Session", #selector(newSessionOfKind(_:)), ""),
+            .codex: item("New Codex Session", #selector(newSessionOfKind(_:)), ""),
+        ]
         file.addItem(item("Add Project…", #selector(addProject), "o", [.command, .shift]))
         file.addItem(.separator())
         file.addItem(item("Close Session", #selector(closeTab), "w"))
         addSubmenu(main, "File", file)
+        fileMenu = file
+        defaultKindWatch = store.$defaultKind.sink { [weak self] kind in self?.orderNewSessionItems(default: kind) }
 
         let edit = NSMenu()
         edit.addItem(withTitle: String(localized: "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
@@ -194,7 +203,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         main.addItem(holder)
     }
 
-    @objc private func newSession() { store.newSession() }
+    /// The default kind's "New … Session" comes first and gets ⌘T.
+    private func orderNewSessionItems(default kind: AgentKind) {
+        guard let fileMenu else { return }
+        let order = [kind] + AgentKind.allCases.filter { $0 != kind }
+        for (i, k) in order.enumerated() {
+            guard let it = newSessionItems[k] else { continue }
+            if it.menu != nil { fileMenu.removeItem(it) }
+            it.keyEquivalent = k == kind ? "t" : ""
+            it.keyEquivalentModifierMask = [.command]
+            fileMenu.insertItem(it, at: i)
+        }
+    }
+
+    @objc private func newSessionOfKind(_ sender: NSMenuItem) {
+        store.newSession(kind: newSessionItems.first { $0.value === sender }?.key)
+    }
     @objc private func addProject() { store.addProjectViaPanel() }
     @objc private func closeTab() { store.closeSelected() }
     @objc private func nextTab() { store.gotoTab(.next) }
