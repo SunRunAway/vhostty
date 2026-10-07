@@ -48,7 +48,7 @@ The interface follows your system language (English or Simplified Chinese).
 | ⇧⌘[ / ⇧⌘] | Previous / next session |
 | ⌃⌘S | Show/hide the sidebar |
 | ⌘J / ⌃` | Show/hide the bottom shell |
-| ⌥⌘↑ / ⌥⌘↓ | Focus the agent / focus the bottom shell |
+| ⌥⌘↑ / ⌥⌘↓ | Focus Agent / focus the bottom shell |
 | ⌘+ / ⌘- / ⌘0 | Increase / decrease / reset font size |
 
 Right-click a session card or a project for more actions. Session cards can also be dragged to reorder.

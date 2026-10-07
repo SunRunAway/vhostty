@@ -157,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         altToggle.isHidden = true
         altToggle.allowsKeyEquivalentWhenHidden = true
         view.addItem(altToggle)
-        view.addItem(item("Focus Claude", #selector(focusClaudePane), String(UnicodeScalar(NSUpArrowFunctionKey)!), [.command, .option]))
+        view.addItem(item("Focus Agent", #selector(focusAgentPane), String(UnicodeScalar(NSUpArrowFunctionKey)!), [.command, .option]))
         view.addItem(item("Focus Terminal", #selector(focusShellPane), String(UnicodeScalar(NSDownArrowFunctionKey)!), [.command, .option]))
         view.addItem(.separator())
         view.addItem(item("Increase Font Size", #selector(fontBigger), "="))
@@ -232,7 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
         store.scheduleSave()
     }
     @objc private func toggleShell() { store.toggleShell() }
-    @objc private func focusClaudePane() { store.focusPane(shell: false) }
+    @objc private func focusAgentPane() { store.focusPane(shell: false) }
     @objc private func focusShellPane() { store.focusPane(shell: true) }
     @objc private func fontBigger() { store.selectedTab?.surface?.perform(action: "increase_font_size:1") }
     @objc private func fontSmaller() { store.selectedTab?.surface?.perform(action: "decrease_font_size:1") }
