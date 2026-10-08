@@ -10,6 +10,8 @@ final class AppStore: ObservableObject {
     @Published var projects: [Project] = []
     @Published var tabs: [TabSession] = []
     @Published private(set) var selectedTabID: UUID?
+    /// Project of the last selected session, kept after that session closes.
+    @Published private(set) var lastProjectID: UUID?
     @Published var history: [UUID: [SessionSummary]] = [:]
     @Published var showAllHistory: Set<UUID> = []
     /// Per-project session search: present while the search field is open.
@@ -39,9 +41,11 @@ final class AppStore: ObservableObject {
 
     func tabs(of project: Project) -> [TabSession] { tabs.filter { $0.projectID == project.id } }
 
-    /// The project new sessions go to by default.
+    /// The project new sessions go to by default: the selected session's, else
+    /// the one last worked in. The first project only if neither exists.
     var currentProject: Project? {
         if let tab = selectedTab, let p = project(tab.projectID) { return p }
+        if let id = lastProjectID, let p = project(id) { return p }
         return projects.first
     }
 
@@ -53,6 +57,7 @@ final class AppStore: ObservableObject {
             projects = state.projects
             tabs = state.tabs.filter { r in state.projects.contains { $0.id == r.projectID } }.map(TabSession.init(record:))
             selectedTabID = state.selectedTabID ?? tabs.first?.id
+            lastProjectID = state.lastProjectID
             if let w = state.sidebarWidth { sidebarWidth = CGFloat(w) }
             if let v = state.sidebarVisible { sidebarVisible = v }
             if let f = state.shellFraction { shellFraction = CGFloat(f) }
@@ -79,6 +84,7 @@ final class AppStore: ObservableObject {
             projects: projects,
             tabs: tabs.map(\.record),
             selectedTabID: selectedTabID,
+            lastProjectID: lastProjectID,
             sidebarWidth: Double(sidebarWidth),
             sidebarVisible: sidebarVisible,
             shellFraction: Double(shellFraction))
@@ -102,7 +108,7 @@ final class AppStore: ObservableObject {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
         panel.prompt = String(localized: "Add Project")
-        panel.message = String(localized: "Choose a project directory. Claude sessions will start there.")
+        panel.message = String(localized: "Choose a project directory. Sessions will start there.")
         guard panel.runModal() == .OK else { return }
         var last: Project?
         for url in panel.urls {
@@ -227,6 +233,7 @@ final class AppStore: ObservableObject {
         if tab.shellVisible { launchShellIfNeeded(tab) }
         tab.attention = false
         if selectedTabID != tab.id { selectedTabID = tab.id }
+        if lastProjectID != tab.projectID { lastProjectID = tab.projectID }
         terminalContainer?.show(tab)
         updateDockBadge()
         scheduleSave()

@@ -54,7 +54,7 @@
 "Paste potentially unsafe content?" = "粘贴可能不安全的内容？";
 "Allow a terminal program to write to the clipboard?" = "允许终端程序写入剪贴板？";
 "Add Project" = "添加项目";
-"Choose a project directory. Claude sessions will start there." = "选择一个项目目录，Claude 会话将在这里启动";
+"Choose a project directory. Sessions will start there." = "选择一个项目目录，会话将在这里启动";
 "Rename Project" = "重命名项目";
 "Remove project “%@”?" = "移除项目「%@」？";
 "It is only removed from Vhostty. No files are deleted." = "只会从 Vhostty 中移除，不会删除任何文件。";
@@ -112,7 +112,7 @@
 "%@ exited" = "%@ 已退出";
 
 /* Empty state */
-"Add a project directory, then summon Claude in it." = "添加一个项目目录，然后在里面召唤 Claude。";
+"Add a project directory, then start a session in it." = "添加一个项目目录，然后在里面开始会话。";
 "New session in %@" = "在 %@ 中新建会话";
 "New session in the current project" = "在当前项目新建会话";
 "Switch sessions" = "切换会话";

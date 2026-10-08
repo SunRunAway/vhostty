@@ -119,7 +119,7 @@ struct EmptyStateView: View {
                 .font(.system(size: 54))
             Text("Vhostty")
                 .font(.system(size: 26, weight: .semibold, design: .rounded))
-            Text("Add a project directory, then summon Claude in it.")
+            Text("Add a project directory, then start a session in it.")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 

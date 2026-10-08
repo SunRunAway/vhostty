@@ -142,6 +142,7 @@ struct PersistedState: Codable {
     var projects: [Project] = []
     var tabs: [TabRecord] = []
     var selectedTabID: UUID?
+    var lastProjectID: UUID?
     var sidebarWidth: Double?
     var sidebarVisible: Bool?
     var shellFraction: Double?
