@@ -87,38 +87,46 @@ struct EmptyStateView: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
+        if let project = store.currentProject {
+            watermark(project)
+        } else {
+            onboarding
+        }
+    }
+
+    /// Projects already sit in the sidebar, so don't list them again here:
+    /// just a faint mark and the keys that start something.
+    private func watermark(_ project: Project) -> some View {
+        VStack(spacing: 28) {
+            Text("👻")
+                .font(.system(size: 72))
+                .grayscale(1)
+                .opacity(0.18)
+            VStack(alignment: .leading, spacing: 8) {
+                shortcut("⌘T", "New session in \(project.name)")
+                shortcut("⇧⌘O", "Add Project")
+                shortcut("⌃⌘S", "Show/hide sidebar")
+            }
+            .font(.system(size: 12.5))
+            .foregroundStyle(.tertiary)
+        }
+        .padding(40)
+    }
+
+    private var onboarding: some View {
         VStack(spacing: 18) {
             Text("👻")
                 .font(.system(size: 54))
             Text("Vhostty")
                 .font(.system(size: 26, weight: .semibold, design: .rounded))
-            Text(store.projects.isEmpty
-                 ? "Add a project directory, then summon Claude in it."
-                 : "Choose a project to start a new session." as LocalizedStringKey)
+            Text("Add a project directory, then summon Claude in it.")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
-            VStack(spacing: 8) {
-                if store.projects.isEmpty {
-                    Button { store.addProjectViaPanel() } label: {
-                        Label("Add Project…", systemImage: "folder.badge.plus").frame(minWidth: 180)
-                    }
-                    .keyboardShortcut(.defaultAction)
-                } else {
-                    ForEach(store.projects.prefix(6)) { p in
-                        Button { store.newSession(in: p) } label: {
-                            HStack {
-                                Circle().fill(p.color).frame(width: 7, height: 7)
-                                Text("New session in \(p.name)")
-                            }
-                            .frame(minWidth: 220)
-                        }
-                    }
-                    Button("Add Project…") { store.addProjectViaPanel() }
-                        .buttonStyle(.link)
-                        .padding(.top, 4)
-                }
+            Button { store.addProjectViaPanel() } label: {
+                Label("Add Project…", systemImage: "folder.badge.plus").frame(minWidth: 180)
             }
+            .keyboardShortcut(.defaultAction)
             .controlSize(.large)
 
             VStack(alignment: .leading, spacing: 4) {

@@ -113,7 +113,6 @@
 
 /* Empty state */
 "Add a project directory, then summon Claude in it." = "添加一个项目目录，然后在里面召唤 Claude。";
-"Choose a project to start a new session." = "选择一个项目，开始新的会话。";
 "New session in %@" = "在 %@ 中新建会话";
 "New session in the current project" = "在当前项目新建会话";
 "Switch sessions" = "切换会话";
