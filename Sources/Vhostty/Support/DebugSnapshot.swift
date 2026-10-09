@@ -117,6 +117,10 @@ final class DebugSnapshot {
                 store.closeSearch(project)
                 continue
             }
+            if line == "refreshhistory" {
+                store.refreshHistory()
+                continue
+            }
             guard let tab = target, let surface = targetShell ? tab.shellSurface : tab.surface else { continue }
             switch line {
             case "enter": surface.debugPress(keyCode: 0x24, chars: "\r")

@@ -72,6 +72,7 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 | `select <UUID>` | 切换到这个会话 |
 | `new` / `new claude` / `new codex` | 新建默认类型 / Claude / Codex 会话 |
 | `search [文字]` / `endsearch` | 打开当前项目的会话搜索并填入文字 / 关闭搜索 |
+| `refreshhistory` | 立即刷新历史列表 |
 | `toggleshell` | 开关当前会话的底部终端 |
 | `focus claude` / `focus shell` | 聚焦上面 / 下面的终端 |
 | `menukey <ctrl\|cmd> <字符>` | 把快捷键直接交给主菜单处理 |
@@ -79,6 +80,8 @@ build/Vhostty.app/Contents/MacOS/Vhostty
 | `cmdj-through-terminal` | 检查 ⌘J 是被终端吃掉还是交给了菜单，结果写到 `keyequiv.txt` |
 
 按键和文字只会发给用 `to` / `toshell` 明确指定的会话。
+
+`make app` 后运行 `python3 scripts/test-codex-history.py`，可在临时状态目录和数据库里验证 Codex 历史在最后一个数据库写连接关闭、数据库暂时被锁、恢复和真正清空时的行为；测试不会启动终端会话，并按 PID 停止自己的 App 实例。
 
 ## 发布
 

@@ -793,14 +793,19 @@ final class AppStore: ObservableObject {
         infoQueue.async { [weak self] in
             var result: [UUID: [SessionSummary]] = [:]
             for p in snapshot { result[p.id] = Self.history(projectPath: p.path) }
-            DispatchQueue.main.async { self?.history = result }
+            DispatchQueue.main.async {
+                // A failed Codex read must not replace the last good list with
+                // Claude-only history. A successful empty result still clears it.
+                for (id, items) in result { self?.history[id] = items }
+            }
         }
     }
 
     /// Claude and Codex sessions of a project, newest first.
-    private static func history(projectPath: String, limit: Int = 40) -> [SessionSummary] {
+    private static func history(projectPath: String, limit: Int = 40) -> [SessionSummary]? {
+        guard let codex = CodexThreads.history(projectPath: projectPath, limit: limit) else { return nil }
         let all = Transcript.history(projectPath: projectPath, limit: limit)
-            + CodexThreads.history(projectPath: projectPath, limit: limit)
+            + codex
         return Array(all.sorted { $0.modified > $1.modified }.prefix(limit))
     }
 
@@ -817,7 +822,7 @@ final class AppStore: ObservableObject {
         if searchQuery[project.id] == nil { searchQuery[project.id] = "" }
         let id = project.id, path = project.path
         infoQueue.async { [weak self] in
-            let all = Self.history(projectPath: path, limit: .max)
+            guard let all = Self.history(projectPath: path, limit: .max) else { return }
             DispatchQueue.main.async {
                 guard let self, self.searchQuery[id] != nil else { return }
                 self.searchHistory[id] = all

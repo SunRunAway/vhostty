@@ -43,26 +43,27 @@ enum CodexThreads {
 
     static func thread(id: String) -> Thread? {
         guard !id.isEmpty else { return nil }
-        return query("SELECT \(columns) FROM threads WHERE id = ?", [id]).first
+        return query("SELECT \(columns) FROM threads WHERE id = ?", [id])?.first
     }
 
     /// The one saved thread whose id starts with `prefix` (hex digits and dashes),
     /// nil if there's none or more than one.
     static func thread(idPrefix prefix: String) -> Thread? {
         guard !prefix.isEmpty, prefix.allSatisfy({ $0.isHexDigit || $0 == "-" }) else { return nil }
-        let rows = query("SELECT \(columns) FROM threads WHERE id LIKE ? LIMIT 2", [prefix + "%"])
+        guard let rows = query("SELECT \(columns) FROM threads WHERE id LIKE ? LIMIT 2", [prefix + "%"]) else { return nil }
         return rows.count == 1 ? rows[0] : nil
     }
 
     /// Recent sessions started in a project or any worktree of its repository, newest first.
-    static func history(projectPath: String, limit: Int = 40) -> [SessionSummary] {
+    /// nil means the read failed, not that the project has no history.
+    static func history(projectPath: String, limit: Int = 40) -> [SessionSummary]? {
         let dirs = directories(projectPath)
         let marks = dirs.map { _ in "?" }.joined(separator: ",")
-        let rows = query("""
+        guard let rows = query("""
             SELECT \(columns) FROM threads
             WHERE \(interactive) AND preview <> '' AND cwd IN (\(marks))
             ORDER BY updated_at DESC LIMIT ?
-            """, dirs + [min(limit, Int(Int32.max))])
+            """, dirs + [min(limit, Int(Int32.max))]) else { return nil }
         return rows.compactMap { t in
             guard let title = t.title ?? t.firstPrompt else { return nil }
             return SessionSummary(id: t.id, title: title, modified: t.modified,
@@ -86,16 +87,23 @@ enum CodexThreads {
 
     private static let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-    private static func query(_ sql: String, _ binds: [Any]) -> [Thread] {
+    private static func query(_ sql: String, _ binds: [Any]) -> [Thread]? {
         guard let url = database() else { return [] }
         var db: OpaquePointer?
         defer { sqlite3_close(db) }
-        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { return [] }
+        func failed() -> [Thread]? {
+            NSLog("Vhostty: Codex state query failed: %@", String(cString: sqlite3_errmsg(db)))
+            return nil
+        }
+        // macOS SQLite cannot recreate missing WAL/SHM files on a READONLY
+        // connection after Codex's last writer closes. Allow that bookkeeping,
+        // but forbid SQL writes and never create the database itself.
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK else { return failed() }
         sqlite3_busy_timeout(db, 500)
+        guard sqlite3_exec(db, "PRAGMA query_only = ON", nil, nil, nil) == SQLITE_OK else { return failed() }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            NSLog("Vhostty: Codex state query failed: %@", String(cString: sqlite3_errmsg(db)))
-            return []
+            return failed()
         }
         defer { sqlite3_finalize(stmt) }
         for (i, value) in binds.enumerated() {
@@ -106,7 +114,10 @@ enum CodexThreads {
             }
         }
         var rows: [Thread] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
+        while true {
+            let status = sqlite3_step(stmt)
+            if status == SQLITE_DONE { return rows }
+            guard status == SQLITE_ROW else { return failed() }
             func text(_ col: Int32) -> String? {
                 sqlite3_column_text(stmt, col).map { String(cString: $0) }
             }
@@ -120,7 +131,6 @@ enum CodexThreads {
                 modified: Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(stmt, 5))),
                 rolloutPath: text(6) ?? ""))
         }
-        return rows
     }
 
     private static func oneLine(_ s: String) -> String? {
