@@ -46,6 +46,8 @@ Ghostty 官方的 macOS 构建依赖 Xcode。为了只用 Command Line Tools 就
 2. **在 macOS 上额外输出静态库 `libghostty.a` 和资源文件**。官方构建只产出 xcframework。
 3. **修复打包问题**：新版 `libtool` 会静默丢弃 zig 打包时没有 8 字节对齐的目标文件，改成先解包再重新打包。
 
+`scripts/build-ghostty.sh` 编译前把补丁打到 `vendor/ghostty` 的工作区里，之后一直留着。`.gitmodules` 设了 `ignore = dirty`，所以主仓库的 `git status` 不显示这些改动；要看补丁是否打上，用 `git -C vendor/ghostty status`。
+
 另外还有两个绕路：
 
 - `scripts/make-zig-sdk.sh`：macOS 26 以后的 SDK 里，库描述文件只写了 arm64e 架构，zig 0.15 识别不了。这个脚本用 APFS 克隆一份 SDK（几乎不占空间），补上 arm64。
