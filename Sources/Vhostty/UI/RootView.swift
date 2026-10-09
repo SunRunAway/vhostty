@@ -94,7 +94,7 @@ private struct ShellToggleButton: View {
     @ObservedObject var tab: TabSession
 
     var body: some View {
-        IconButton(systemName: "rectangle.bottomthird.inset.filled",
+        IconButton(systemName: tab.shellVisible ? "terminal.fill" : "terminal",
                    help: tab.shellVisible ? "Hide Terminal (⌘J)" : "Show Terminal (⌘J)",
                    active: tab.shellVisible) {
             store.toggleShell()
