@@ -275,6 +275,8 @@ private struct HistoryRow: View {
 struct IconButton: View {
     let systemName: String
     let help: LocalizedStringKey
+    /// Drawn brighter while what it toggles is on.
+    var active = false
     let action: () -> Void
     @State private var hover = false
 
@@ -287,7 +289,7 @@ struct IconButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(active ? .primary : .secondary)
         .onHover { hover = $0 }
         .help(help)
     }

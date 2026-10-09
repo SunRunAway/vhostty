@@ -34,7 +34,7 @@ The interface follows your system language (English or Simplified Chinese).
 - **Background notifications**: these are the agent's own terminal notifications (Claude Code and Codex both send OSC 9 in Ghostty), so your notification settings in Claude or Codex are respected. When the session isn't selected or the window is in the background, Vhostty turns them into macOS system notifications; clicking one jumps to that session. Claude usually only notifies after finishing and waiting about 60 seconds for you, but the blue dot on the card and the Dock badge update immediately (via Claude Code hooks, or Codex's terminal title).
 - **Session history**: each project lists its recent Claude and Codex sessions; click one to resume it with `claude --resume` or `codex resume`.
 - **Autosave**: all session cards are saved on quit. On next launch a session is only restored when you click its card, so you don't get a pile of agents starting at once.
-- **Bottom shell**: every session can pull up a plain shell below the agent (⌘J or ⌃`), in the same directory the agent is currently in. The divider between the two is draggable, and whether the panel is open is saved with the session.
+- **Bottom shell**: every session can pull up a plain shell below the agent (⌘J, ⌃`, or the button at the right of the title bar), in the same directory the agent is currently in. The divider between the two is draggable, and whether the panel is open is saved with the session.
 - **Reuses your Ghostty config**: reads your Ghostty config (fonts, theme, keybindings) from `~/.config/ghostty/config` or `~/Library/Application Support/com.mitchellh.ghostty/config`.
 
 ## Keyboard shortcuts

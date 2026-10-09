@@ -26,8 +26,9 @@
   (title / branch / worktree / PR). New cards go at the top of their project.
 - System notifications come from the agent's own OSC 9/777 notifications
   through Ghostty, not from hooks.
-- The bottom shell panel has no buttons, only a menu item under View and the ⌘J
-  and ⌃` shortcuts. It stays out of the empty-state hints.
+- The bottom shell panel is toggled by one icon button at the right end of the
+  title strip above the terminal, a menu item under View, and the ⌘J and ⌃`
+  shortcuts. It stays out of the empty-state hints.
 - Don't dim the unfocused pane.
 - No renaming of session titles from the sidebar. The claude CLI can only name
   a session at launch (`--name`) or by typing `/rename` inside it, and typing

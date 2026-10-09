@@ -58,6 +58,11 @@ struct TitleStrip: View {
             if let tab = store.selectedTab {
                 TitleStripLabel(tab: tab, project: store.project(tab.projectID))
                     .allowsHitTesting(false)
+                HStack {
+                    Spacer()
+                    ShellToggleButton(store: store, tab: tab)
+                }
+                .padding(.trailing, 10)
             }
         }
         .padding(.leading, store.sidebarVisible ? 0 : 76)
@@ -80,6 +85,20 @@ private struct TitleStripLabel: View {
         }
         .font(.system(size: 12, weight: .medium))
         .padding(.horizontal, 16)
+    }
+}
+
+/// Shows/hides the selected session's bottom shell panel (same as ⌘J).
+private struct ShellToggleButton: View {
+    let store: AppStore
+    @ObservedObject var tab: TabSession
+
+    var body: some View {
+        IconButton(systemName: "rectangle.bottomthird.inset.filled",
+                   help: tab.shellVisible ? "Hide Terminal (⌘J)" : "Show Terminal (⌘J)",
+                   active: tab.shellVisible) {
+            store.toggleShell()
+        }
     }
 }
 

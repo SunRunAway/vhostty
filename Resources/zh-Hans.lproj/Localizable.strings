@@ -26,6 +26,8 @@
 "Show/Hide Terminal" = "显示/隐藏终端";
 "Focus Agent" = "聚焦 Agent";
 "Focus Terminal" = "聚焦终端";
+"Show Terminal (⌘J)" = "显示终端 (⌘J)";
+"Hide Terminal (⌘J)" = "隐藏终端 (⌘J)";
 "Increase Font Size" = "放大字体";
 "Decrease Font Size" = "缩小字体";
 "Actual Size" = "实际大小";
