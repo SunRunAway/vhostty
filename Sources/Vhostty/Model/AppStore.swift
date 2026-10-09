@@ -12,6 +12,8 @@ final class AppStore: ObservableObject {
     @Published private(set) var selectedTabID: UUID?
     /// Project of the last selected session, kept after that session closes.
     @Published private(set) var lastProjectID: UUID?
+    /// The built-in default kind, picked on first launch from which agents are installed.
+    @Published private(set) var detectedKind: AgentKind?
     @Published var history: [UUID: [SessionSummary]] = [:]
     @Published var showAllHistory: Set<UUID> = []
     /// Per-project session search: present while the search field is open.
@@ -58,6 +60,7 @@ final class AppStore: ObservableObject {
             tabs = state.tabs.filter { r in state.projects.contains { $0.id == r.projectID } }.map(TabSession.init(record:))
             selectedTabID = state.selectedTabID ?? tabs.first?.id
             lastProjectID = state.lastProjectID
+            detectedKind = state.detectedKind
             if let w = state.sidebarWidth { sidebarWidth = CGFloat(w) }
             if let v = state.sidebarVisible { sidebarVisible = v }
             if let f = state.shellFraction { shellFraction = CGFloat(f) }
@@ -74,6 +77,23 @@ final class AppStore: ObservableObject {
         refreshAllInfo()
     }
 
+    /// Called once the user's shell environment is known (ShellEnvironment.loadInteractive).
+    func shellEnvironmentLoaded() {
+        if detectedKind == nil, let installed = ShellEnvironment.installedAgents, let first = installed.first {
+            detectedKind = first
+            scheduleSave()
+        }
+        objectWillChange.send()  // VHOSTTY_DEFAULT_AGENT may have changed defaultKind
+        refreshHistory()  // Codex's history depends on the shell's CODEX_HOME.
+    }
+
+    /// The kind new projects start: VHOSTTY_DEFAULT_AGENT, else what was installed on
+    /// first launch (Claude if both were), else Claude.
+    var globalDefaultKind: AgentKind { ShellEnvironment.defaultAgent ?? detectedKind ?? .claude }
+
+    /// What ⌘T and the new-session button start in a project.
+    func defaultKind(_ project: Project) -> AgentKind { project.defaultKind ?? globalDefaultKind }
+
     /// Called once the window exists: start Claude in the selected tab.
     func activateSelection() {
         if let tab = selectedTab { select(tab) }
@@ -85,6 +105,7 @@ final class AppStore: ObservableObject {
             tabs: tabs.map(\.record),
             selectedTabID: selectedTabID,
             lastProjectID: lastProjectID,
+            detectedKind: detectedKind,
             sidebarWidth: Double(sidebarWidth),
             sidebarVisible: sidebarVisible,
             shellFraction: Double(shellFraction))
@@ -188,7 +209,7 @@ final class AppStore: ObservableObject {
             addProjectViaPanel()
             return
         }
-        let kind = kind ?? project.defaultKind ?? .claude
+        let kind = kind ?? defaultKind(project)
         // Codex can't be given a session id; it gets one once its thread shows up.
         let sessionID = kind == .claude ? UUID().uuidString.lowercased() : ""
         let tab = TabSession(projectID: project.id, kind: kind, sessionID: sessionID, cwd: project.path)
@@ -198,7 +219,7 @@ final class AppStore: ObservableObject {
 
     /// Both kinds, the project's default first (the order of its "New … Session" menu items).
     func kindsDefaultFirst(_ project: Project) -> [AgentKind] {
-        let first = project.defaultKind ?? .claude
+        let first = defaultKind(project)
         return [first] + AgentKind.allCases.filter { $0 != first }
     }
 

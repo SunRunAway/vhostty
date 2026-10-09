@@ -15,9 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, Ghos
     func applicationDidFinishLaunching(_ notification: Notification) {
         DispatchQueue.global(qos: .userInitiated).async {
             ShellEnvironment.load()
-            ShellEnvironment.loadCodexHome()
-            // Codex's history depends on the shell's CODEX_HOME.
-            DispatchQueue.main.async { AppStore.shared.refreshHistory() }
+            ShellEnvironment.loadInteractive()
+            DispatchQueue.main.async { AppStore.shared.shellEnvironmentLoaded() }
         }
 
         guard GhosttyRuntime.shared.start() else {

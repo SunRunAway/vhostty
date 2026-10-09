@@ -16,6 +16,8 @@ enum ShellEnvironment {
     private static let lock = NSLock()
     private static var _path = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
     private static var _codexHome: String?
+    private static var _defaultAgent: AgentKind?
+    private static var _installedAgents: [AgentKind]?
 
     static var path: String {
         lock.lock(); defer { lock.unlock() }
@@ -26,6 +28,19 @@ enum ShellEnvironment {
     static var codexHome: String? {
         lock.lock(); defer { lock.unlock() }
         return _codexHome
+    }
+
+    /// VHOSTTY_DEFAULT_AGENT ("claude" or "codex") as set by the user's shell.
+    static var defaultAgent: AgentKind? {
+        lock.lock(); defer { lock.unlock() }
+        return _defaultAgent ?? ProcessInfo.processInfo.environment["VHOSTTY_DEFAULT_AGENT"]
+            .flatMap { AgentKind(rawValue: $0.lowercased()) }
+    }
+
+    /// The agents found by the user's interactive shell; nil until loadInteractive ran.
+    static var installedAgents: [AgentKind]? {
+        lock.lock(); defer { lock.unlock() }
+        return _installedAgents
     }
 
     static func load() {
@@ -40,14 +55,25 @@ enum ShellEnvironment {
     }
 
     /// Codex runs in each tab's interactive login shell (ClaudeLauncher.command), so
-    /// read CODEX_HOME the same way: it may be set in an rc file.
-    static func loadCodexHome() {
-        let marker = "__VHOSTTY_CODEX_HOME__"
-        let result = Proc.run(shell, ["-l", "-i", "-c", "printf '\(marker)%s' \"$CODEX_HOME\""], timeout: 8, usePathEnv: false)
+    /// read CODEX_HOME and VHOSTTY_DEFAULT_AGENT the same way: they may be set in an
+    /// rc file. Also note which agents that shell can find (its PATH, aliases and
+    /// functions may differ from the non-interactive PATH above).
+    static func loadInteractive() {
+        let marker = "__VHOSTTY_ENV__"
+        let script = "printf '\(marker)%s\\n%s\\n%s\\n%s\\n' \"$CODEX_HOME\" \"$VHOSTTY_DEFAULT_AGENT\" "
+            + "\"$(command -v claude)\" \"$(command -v codex)\""
+        let result = Proc.run(shell, ["-l", "-i", "-c", script], timeout: 8, usePathEnv: false)
         guard let out = result?.stdout, let range = out.range(of: marker) else { return }
-        let home = String(out[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let lines = out[range.upperBound...].split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+        guard lines.count >= 4 else { return }
+        var installed: [AgentKind] = []
+        if !lines[2].isEmpty { installed.append(.claude) }
+        if !lines[3].isEmpty { installed.append(.codex) }
         lock.lock()
-        _codexHome = home.nonEmpty
+        _codexHome = lines[0].nonEmpty
+        _defaultAgent = AgentKind(rawValue: lines[1].lowercased())
+        _installedAgents = installed
         lock.unlock()
     }
 

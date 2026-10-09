@@ -24,7 +24,7 @@ The interface follows your system language (English or Simplified Chinese).
   2. The current branch
   3. The worktree name, or 「主工作区」 (main worktree) when not in a worktree
   4. The PR number, e.g. `#123`, colored by state: open green / merged purple / closed red. Click it to open the PR in your browser
-- **New session**: `cd`s into the project directory and starts `claude` or `codex`. A project's ⋯ menu has both; "Set Default Session" picks, per project, which one ⌘T and the ✎ button start. When the agent exits, the terminal stays in your shell. A new Codex session is matched to its card once you send its first message. Inside Vhostty, Codex's terminal title is set by Vhostty (it reads the session id from there), so your `tui.terminal_title` setting doesn't apply in its cards.
+- **New session**: `cd`s into the project directory and starts `claude` or `codex`. A project's ⋯ menu has both; "Set Default Session" picks, per project, which one ⌘T and the ✎ button start; a project that hasn't picked one uses the global default (see [Configuration](#configuration)). When the agent exits, the terminal stays in your shell. A new Codex session is matched to its card once you send its first message. Inside Vhostty, Codex's terminal title is set by Vhostty (it reads the session id from there), so your `tui.terminal_title` setting doesn't apply in its cards.
 - **Live status**:
   - Spinner = the agent is working
   - ✋ = waiting for you to approve a permission (Claude only)
@@ -52,6 +52,14 @@ The interface follows your system language (English or Simplified Chinese).
 | ⌘+ / ⌘- / ⌘0 | Increase / decrease / reset font size |
 
 Right-click a session card or a project for more actions. Session cards can also be dragged to reorder.
+
+## Configuration
+
+Vhostty reads these environment variables from your login shell (the same shell its tabs run, rc files included), so set them in e.g. `~/.zshrc` and restart Vhostty:
+
+| Variable | Effect |
+|---|---|
+| `VHOSTTY_DEFAULT_AGENT` | `claude` or `codex`: the global default session kind, used by every project that hasn't picked its own under "Set Default Session". When unset, Vhostty uses what it found installed on its first launch: Claude if `claude` was there, else Codex if `codex` was. |
 
 ## Installing
 

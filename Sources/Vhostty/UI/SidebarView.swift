@@ -159,7 +159,7 @@ private struct ProjectRow: View {
                 IconButton(systemName: "magnifyingglass", help: "Search Sessions") {
                     if store.searchQuery[project.id] != nil { store.closeSearch(project) } else { store.openSearch(project) }
                 }
-                IconButton(systemName: "square.and.pencil", help: (project.defaultKind ?? .claude).newSessionTitle) {
+                IconButton(systemName: "square.and.pencil", help: store.defaultKind(project).newSessionTitle) {
                     store.newSession(in: project)
                 }
             }
@@ -184,7 +184,7 @@ private struct ProjectRow: View {
         Menu("Set Default Session") {
             ForEach(AgentKind.allCases) { kind in
                 Toggle(kind.name, isOn: Binding(
-                    get: { (project.defaultKind ?? .claude) == kind },
+                    get: { store.defaultKind(project) == kind },
                     set: { if $0 { store.setDefaultKind(kind, for: project) } }))
             }
         }
