@@ -31,6 +31,10 @@ final class AppStore: ObservableObject {
 
     private var refreshTimer: Timer?
     private var historyTimer: Timer?
+    private var historyWatcher: HistoryWatcher?
+    private var historyObservers: [NSObjectProtocol] = []
+    private var historyRefreshing = false
+    private var historyRefreshPending = false
     private var saveWork: DispatchWorkItem?
     private let infoQueue = DispatchQueue(label: "vhostty.info", qos: .utility)
     private var refreshing: Set<UUID> = []
@@ -70,9 +74,23 @@ final class AppStore: ObservableObject {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
             self?.refreshAllInfo()
         }
-        historyTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        historyTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            self?.watchHistory()
             self?.refreshHistory()
         }
+        watchHistory()
+        historyObservers.append(NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.watchHistory()
+            self?.refreshHistory()
+        })
+        historyObservers.append(NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.watchHistory()
+            self?.refreshHistory()
+        })
         refreshHistory()
         refreshAllInfo()
     }
@@ -84,6 +102,7 @@ final class AppStore: ObservableObject {
             scheduleSave()
         }
         objectWillChange.send()  // VHOSTTY_DEFAULT_AGENT may have changed defaultKind
+        watchHistory()
         refreshHistory()  // Codex's history depends on the shell's CODEX_HOME.
     }
 
@@ -788,15 +807,39 @@ final class AppStore: ObservableObject {
         }
     }
 
+    private func watchHistory() {
+        historyWatcher = HistoryWatcher(paths: [Transcript.projectsDir, CodexThreads.home]) { [weak self] in
+            self?.refreshHistory()
+        }
+    }
+
     func refreshHistory() {
+        guard !historyRefreshing else {
+            historyRefreshPending = true
+            return
+        }
+        historyRefreshing = true
         let snapshot = projects
+        let searching = Set(searchQuery.keys)
         infoQueue.async { [weak self] in
             var result: [UUID: [SessionSummary]] = [:]
-            for p in snapshot { result[p.id] = Self.history(projectPath: p.path) }
+            for p in snapshot {
+                result[p.id] = Self.history(projectPath: p.path, limit: searching.contains(p.id) ? .max : 40)
+            }
             DispatchQueue.main.async {
-                // A failed Codex read must not replace the last good list with
-                // Claude-only history. A successful empty result still clears it.
-                for (id, items) in result { self?.history[id] = items }
+                guard let self else { return }
+                // Failed reads preserve the last good normal and search snapshots.
+                for (id, items) in result where self.project(id) != nil {
+                    self.history[id] = Array(items.prefix(40))
+                    if searching.contains(id), self.searchQuery[id] != nil {
+                        self.searchHistory[id] = items
+                    }
+                }
+                self.historyRefreshing = false
+                if self.historyRefreshPending {
+                    self.historyRefreshPending = false
+                    self.refreshHistory()
+                }
             }
         }
     }

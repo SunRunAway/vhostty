@@ -178,6 +178,10 @@ final class DebugSnapshot {
             let name = store.project(pid)?.name ?? "?"
             lines.append("history[\(name)]: " + items.prefix(5).map(\.title).joined(separator: " / "))
         }
+        for (pid, items) in store.searchHistory {
+            let name = store.project(pid)?.name ?? "?"
+            lines.append("search[\(name)]: " + items.prefix(5).map(\.title).joined(separator: " / "))
+        }
         try? lines.joined(separator: "\n").write(to: directory.appendingPathComponent("state.txt"), atomically: true, encoding: .utf8)
     }
 

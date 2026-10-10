@@ -19,7 +19,7 @@ def wait_for(check, description, timeout=20):
     raise AssertionError(description)
 
 
-root = Path(tempfile.mkdtemp(prefix="vhostty-history-"))
+root = Path(tempfile.mkdtemp(dir="/private/tmp", prefix="vhostty-history-"))
 print(f"Scratch artifacts: {root}", flush=True)
 home = root / "codex"
 project = root / "project"
@@ -67,6 +67,19 @@ with log_path.open("w") as log:
         wait_for(lambda: all(f"Codex fixture {i}" in state() for i in range(2)),
                  "initial Codex history not loaded")
         print("PASS initial history", flush=True)
+        # No explicit refresh: WAL writes must reach both history and an open search.
+        (snapshot / "input.txt").write_text("search\n")
+        wait_for(lambda: "search[Fixture]:" in state(), "search not loaded")
+        started = time.monotonic()
+        db.execute("UPDATE threads SET name = 'Event ' || name")
+        db.commit()
+        wait_for(lambda: "search[Fixture]: Event Codex fixture" in state()
+                 and "history[Fixture]: Event Codex fixture" in state(),
+                 "filesystem event did not refresh history and search", timeout=10)
+        print(f"PASS automatic WAL/search refresh ({time.monotonic() - started:.1f}s)", flush=True)
+        db.execute("UPDATE threads SET name = replace(name, 'Event ', '')")
+        db.commit()
+        wait_for(lambda: "Event Codex fixture" not in state(), "rename did not refresh", timeout=10)
         # The last writer checkpoints and removes WAL/SHM files when it closes.
         db.close()
         refresh()
@@ -90,12 +103,10 @@ with log_path.open("w") as log:
         blocker = None
         with sqlite3.connect(db_path) as db:
             db.execute("UPDATE threads SET name = 'Recovered ' || name")
-        refresh()
         wait_for(lambda: "Recovered Codex fixture 0" in state(), "history did not recover")
         print("PASS refresh recovers after unlock", flush=True)
         with sqlite3.connect(db_path) as db:
             db.execute("DELETE FROM threads")
-        refresh()
         wait_for(lambda: "Codex fixture" not in state(), "successful empty result retained stale history")
         print("PASS successful empty result clears history", flush=True)
     finally:

@@ -26,6 +26,12 @@ Codex 每张卡片跑的是 `vhostty-codex -c tui.terminal_title=…`（新建�
 - 历史会话、标题、分支也来自 `threads` 表（只列用户自己发起的会话，不含子代理、自动化和已归档的）。
 - Codex 的数据目录是 `CODEX_HOME`（默认 `~/.codex`）。卡片里的 Codex 由交互式登录 shell 启动，所以 Vhostty 启动时也用 `$SHELL -l -i -c` 读这个变量。
 
+### 历史刷新
+
+`HistoryWatcher` 用 FSEvents 监听 Claude JSONL 和 Codex state SQLite/WAL 的外部变化，Codex 另用 vnode 写入通知覆盖长期打开的 WAL 连接。合并短时间内的事件后重新读取历史，也更新打开的搜索结果。忽略本进程的 SQLite 文件维护事件，避免循环刷新；同一时间最多执行一轮历史读取，期间收到事件则补一轮。启动、激活、唤醒和每五分钟的兜底扫描保证恢复；读取失败仍保留上次结果。
+
+`python3 scripts/test-history-watcher.py` 在 `/private/tmp` 测试实际文件事件（含目录创建、替换、删除和 WAL）；`python3 scripts/test-codex-history.py` 用隔离 App 验证自动刷新、搜索和 SQLite 失败恢复。两者均不启动真实 agent 会话。
+
 ### 卡片上的信息从哪来
 
 | 信息 | 来源 |
