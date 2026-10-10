@@ -28,7 +28,7 @@ The interface follows your system language (English or Simplified Chinese).
 - **Live status**:
   - Spinner = the agent is working
   - ✋ = waiting for you to approve a permission (Claude only)
-  - Green dot = waiting for your input
+  - No status icon = idle, with no unread reminder
   - Blue dot = finished in the background and you haven't looked yet
   - Hollow circle = not started
 - **Background notifications**: these are the agent's own terminal notifications (Claude Code and Codex both send OSC 9 in Ghostty), so your notification settings in Claude or Codex are respected. When the session isn't selected or the window is in the background, Vhostty turns them into macOS system notifications; clicking one jumps to that session. Claude usually only notifies after finishing and waiting about 60 seconds for you, but the blue dot on the card and the Dock badge update immediately (via Claude Code hooks, or Codex's terminal title).

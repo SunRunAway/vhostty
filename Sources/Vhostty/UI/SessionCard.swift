@@ -165,7 +165,7 @@ struct StatusIndicator: View {
                     .foregroundStyle(Color(red: 1.0, green: 0.72, blue: 0.25))
             case .idle:
                 Circle()
-                    .fill(attention ? Color(red: 0.35, green: 0.62, blue: 1.0) : Color(red: 0.38, green: 0.82, blue: 0.48))
+                    .fill(attention ? Color(red: 0.35, green: 0.62, blue: 1.0) : Color.clear)
                     .frame(width: 7, height: 7)
             case .starting:
                 Circle().fill(Color.gray.opacity(0.7)).frame(width: 7, height: 7)

@@ -26,7 +26,7 @@ Vhostty 是一个 macOS 原生终端，专门用来同时跑好几个 Claude Cod
 - **状态实时显示**：
   - 转圈 = agent 正在干活
   - ✋ = 等你确认权限（仅 Claude）
-  - 绿点 = 等你输入
+  - 无状态图标 = 空闲，没有未读提醒
   - 蓝点 = 在后台干完了、你还没看
   - 空心圆 = 未启动
 - **后台通知**：通知直接用 agent 自带的终端通知（Claude Code 和 Codex 在 Ghostty 里都会发 OSC 9），所以会遵守你在 Claude 或 Codex 里的通知设置。会话没被选中或窗口在后台时，Vhostty 把它转成 macOS 系统通知，点击会跳到对应会话。Claude 一般在干完活、等你约 60 秒后才发通知；卡片上的蓝点和 Dock 角标则会立即更新（Claude 靠 Claude Code 的 hooks，Codex 靠它的终端标题）。
